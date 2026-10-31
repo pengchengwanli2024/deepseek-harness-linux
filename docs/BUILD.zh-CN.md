@@ -266,7 +266,7 @@ bash scripts/package/build-linux.sh x64 --dry-run
 | 产物 | arm64 | x64 |
 | --- | --- | --- |
 | AppImage | 270,334,588 B（≈258 MiB） | 268,661,926 B（≈256 MiB） |
-| deb | 224,029,452 B（≈214 MiB） | 229,335,012 B（≈219 MiB） |
+| deb | 224,029,176 B（≈214 MiB） | 229,335,180 B（≈219 MiB） |
 | 安装后磁盘占用 | 约 0.9–1.1 GB（arm64 deb Installed-Size ≈ 982 MB） | 同量级 |
 | 运行时（解压后） | ≈ 797 MB（`du`；apparent ≈ 679 MiB） | ≈ 794 MB（`du`；apparent ≈ 677 MiB） |
 
