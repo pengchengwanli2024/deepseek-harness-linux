@@ -1,0 +1,8 @@
+node_modules/
+build/
+dist/
+runtime/
+.DS_Store
+*.log
+*.tmp
+docs/assets/screenshots/*.tmp
