@@ -208,6 +208,10 @@ DOCKER_RUN=(
   -e DSH_COMMIT="$COMMIT"
   -e DSH_COMMIT_DIRTY="$DIRTY"
   -e DSH_BUILT_AT="$BUILT_AT"
+  # 容器内以 root 复制到 bind mount 的 dist/ 需归还宿主用户，
+  # 否则宿主侧 build.sh 的 manifest 步骤无法覆盖 SHA256SUMS/RELEASE.json。
+  -e HOST_UID="$(id -u)"
+  -e HOST_GID="$(id -g)"
 )
 
 note "arch=$ARCH platform=$DOCKER_PLATFORM image=$DOCKER_IMAGE targets=$TARGETS"

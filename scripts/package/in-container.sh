@@ -398,3 +398,13 @@ node "$PKG_ROOT/scripts/package/release-metadata.mjs" \
   --built-at "$BUILT_AT" || die "release metadata generation failed"
 
 log "done: $N artifact(s) in $DIST_DIR"
+
+# 交付物从容器 root 复制到宿主 bind mount，chown 回宿主 UID/GID，
+# 保证宿主侧 build.sh/manifest 与后续人工操作可覆盖 dist/ 文件。
+if [ -n "${HOST_UID:-}" ] && [ -n "${HOST_GID:-}" ]; then
+  if chown -R "$HOST_UID:$HOST_GID" "$DIST_DIR" 2>/dev/null; then
+    log "dist ownership -> $HOST_UID:$HOST_GID"
+  else
+    log "WARN: could not chown dist to $HOST_UID:$HOST_GID (non-fatal)"
+  fi
+fi
