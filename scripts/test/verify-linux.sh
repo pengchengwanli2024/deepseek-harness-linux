@@ -705,13 +705,16 @@ phase_appimage() {
 # ============================================================================
 # Phase: deb (AC3)
 # ============================================================================
-MIRROR_SETUP=""
-if [ -n "${DSH_QA_UBUNTU_MIRROR:-}" ]; then
-  MIRROR_SETUP="sed -i \"s#http://ports.ubuntu.com/ubuntu-ports#${DSH_QA_UBUNTU_MIRROR}#g; s#http://archive.ubuntu.com/ubuntu#${DSH_QA_UBUNTU_MIRROR}#g\" /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true; sed -i \"s#http://ports.ubuntu.com/ubuntu-ports#${DSH_QA_UBUNTU_MIRROR}#g\" /etc/apt/sources.list 2>/dev/null || true;"
-fi
-
 phase_deb() {
-  local arch="$1" deb name platform out rc pnginfo debarch
+  local arch="$1" deb name platform out rc pnginfo debarch mirror
+  local MIRROR_SETUP=""
+  if [ -n "${DSH_QA_UBUNTU_MIRROR:-}" ]; then
+    mirror="$DSH_QA_UBUNTU_MIRROR"
+    if [ "$arch" = "x64" ]; then
+      mirror="$(printf '%s' "$mirror" | sed 's#/ubuntu-ports#/ubuntu#g')"
+    fi
+    MIRROR_SETUP="sed -i \"s#http://ports.ubuntu.com/ubuntu-ports#$mirror#g; s#http://archive.ubuntu.com/ubuntu#$mirror#g\" /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true; sed -i \"s#http://ports.ubuntu.com/ubuntu-ports#$mirror#g\" /etc/apt/sources.list 2>/dev/null || true;"
+  fi
   begin_phase "deb-$arch"
   if ! deb="$(find_artifact "$arch" deb)"; then
     if [ "$STRICT" = "1" ]; then fail "deb-$arch: deb not found in $DIST_DIR"; else skip "deb-$arch: deb not found in $DIST_DIR"; fi
@@ -737,11 +740,11 @@ phase_deb() {
     timeout 240 apt-get -o Acquire::Retries=5 update -qq > /tmp/apt-update.log 2>&1; echo \"update_exit=\$?\"
     APT_OK=0
     for i in 1 2 3 4 5 6; do
-      timeout 300 apt-get -o Acquire::Retries=5 -o Acquire::http::MaxParallel=1 -o APT::Install-Recommends=false -f install -y -qq > /tmp/apt-fix.log 2>&1
+      timeout 480 apt-get -o Acquire::Retries=5 -o Acquire::http::MaxParallel=1 -f install -y -qq > /tmp/apt-fix.log 2>&1
       RC=\$?
       echo \"apt_fix_attempt=\$i rc=\$RC\"
       if [ \$RC -eq 0 ]; then APT_OK=1; break; fi
-      timeout 300 apt-get -o Acquire::Retries=5 -o Acquire::http::MaxParallel=1 -o APT::Install-Recommends=false -f install -y -qq --fix-missing >> /tmp/apt-fix.log 2>&1
+      timeout 480 apt-get -o Acquire::Retries=5 -o Acquire::http::MaxParallel=1 -f install -y -qq --fix-missing >> /tmp/apt-fix.log 2>&1
       RC2=\$?
       echo \"apt_fix_missing_attempt=\$i rc=\$RC2\"
       if [ \$RC2 -eq 0 ]; then APT_OK=1; break; fi
@@ -755,6 +758,14 @@ phase_deb() {
     if [ \"\$V\" = '0.2.1' ]; then echo 'ASSERT version PASS'; else echo 'ASSERT version FAIL'; fi
     A=\$(dpkg-query -W -f='\${Architecture}' deepseek-harness-linux 2>/dev/null); echo \"arch=\$A\"
     if [ \"\$A\" = '$debarch' ]; then echo 'ASSERT arch PASS'; else echo 'ASSERT arch FAIL'; fi
+    echo '--- ALSA dependency resolution (t64-first check)'
+    if dpkg -l libasound2t64 2>/dev/null | grep -q '^ii  libasound2t64'; then echo 'ASSERT alsa-t64 PASS'; else echo 'ASSERT alsa-t64 FAIL'; dpkg -l | grep -E 'libasound' | head -5; fi
+    if dpkg -l 2>/dev/null | grep -q 'liboss4'; then echo 'ASSERT alsa-no-oss4 FAIL'; dpkg -l | grep liboss4; else echo 'ASSERT alsa-no-oss4 PASS'; fi
+    ASOUND_TARGET=\$(readlink -f /usr/lib/*-linux-gnu/libasound.so.2 2>/dev/null | head -1); echo \"asound_target=\$ASOUND_TARGET\"
+    case \"\$ASOUND_TARGET\" in
+      */libasound.so.2.0.0) echo 'ASSERT alsa-real-lib PASS' ;;
+      *) echo 'ASSERT alsa-real-lib FAIL' ;;
+    esac
     echo '--- executable'
     if [ -x /usr/bin/deepseek-harness ]; then echo 'ASSERT bin PASS'; else echo 'ASSERT bin FAIL'; fi
     readlink -f /usr/bin/deepseek-harness 2>/dev/null
@@ -814,7 +825,7 @@ phase_deb() {
   rc=$?
   say "$out"
   local a
-  for a in installed version arch bin sandbox-setuid desktop desktop-exec icon; do
+  for a in installed version arch alsa-t64 alsa-no-oss4 alsa-real-lib bin sandbox-setuid desktop desktop-exec icon; do
     if printf '%s\n' "$out" | grep -q "ASSERT $a PASS"; then pass "deb-$arch: $a"; fi
     if printf '%s\n' "$out" | grep -q "ASSERT $a FAIL"; then fail "deb-$arch: $a"; fi
   done
