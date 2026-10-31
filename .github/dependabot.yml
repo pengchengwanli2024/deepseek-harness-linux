@@ -1,0 +1,55 @@
+# Dependabot 配置：每周检查 npm 与 GitHub Actions 依赖
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm-development:
+        dependency-type: "development"
+        patterns:
+          - "*"
+      npm-production:
+        dependency-type: "production"
+        patterns:
+          - "*"
+    ignore:
+      # Electron / electron-builder / electron-updater 的版本与运行时契约、
+      # 应用版本强相关（见 versions.json 与 docs/BUILD.zh-CN.md），
+      # 大版本升级需要人工评估并完整跑验收，不做自动 PR。
+      - dependency-name: "electron"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "electron-builder"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "electron-updater"
+        update-types:
+          - "version-update:semver-major"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

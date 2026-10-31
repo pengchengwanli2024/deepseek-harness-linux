@@ -167,7 +167,22 @@ check_asar() {
   if printf '%s\n' "$listing" | grep -Eq '^/(runtime|dist|docs)/'; then
     die "app.asar 不应包含 runtime/、dist/ 或 docs/"
   fi
-  log "app.asar 仅含壳代码（app/main.mjs 存在，无 runtime/dist/docs）"
+  # 自动更新依赖必须真的打进 app.asar（否则打包后运行时 import 会失败）：
+  # electron-updater 及其生产依赖闭包（electron-builder 会按 dependencies 递归收集）。
+  printf '%s\n' "$listing" | grep -q '/node_modules/electron-updater/package.json' \
+    || die "app.asar 中缺少 node_modules/electron-updater（自动更新依赖未打入 asar）"
+  for dep in builder-util-runtime fs-extra js-yaml lazy-val lodash.escaperegexp lodash.isequal semver tiny-typed-emitter; do
+    printf '%s\n' "$listing" | grep -q "/node_modules/$dep/package.json" \
+      || die "app.asar 中缺少 electron-updater 依赖: $dep"
+  done
+  ASAR_DEPS="$(node -e '
+    const asar = require(process.argv[1]);
+    const pkg = JSON.parse(asar.extractFile(process.argv[2], "package.json").toString("utf8"));
+    console.log(JSON.stringify(pkg.dependencies || {}));
+  ' "$STAGE/node_modules/@electron/asar" "$unpacked/resources/app.asar")"
+  printf '%s' "$ASAR_DEPS" | grep -q '"electron-updater"' \
+    || die "app.asar 内 package.json 未声明 electron-updater 依赖（运行时 require 会失败）"
+  log "app.asar 仅含壳代码 + electron-updater 依赖（app/main.mjs 存在，无 runtime/dist/docs）"
   assert_runtime_tree "$unpacked/resources/runtime" "unpacked"
 }
 
@@ -286,6 +301,44 @@ fi
 
 check_asar "$OUTPUT"
 
+# ---- 4b. 自动更新元数据校验（latest-linux*.yml） -------------------------
+# electron-updater 在 Linux 上按架构请求不同通道文件：
+#   x64   -> latest-linux.yml        arm64 -> latest-linux-arm64.yml
+# 通道文件里的 files[].url / path 必须与最终 GitHub Release 资产名完全一致，sha512/size
+# 必须对应实际产物，AppImage 条目还必须带内嵌的 blockMapSize（differential download 依赖）。
+# 校验失败即终止构建，避免发布出客户端永远无法自动更新的产物。
+APPIMAGE_FINAL="$DSH_ARTIFACT_APPIMAGE"
+DEB_FINAL="$DSH_ARTIFACT_DEB"
+EXPECT_YML=""
+case "$ARCH" in
+  x64)   EXPECT_YML="latest-linux.yml" ;;
+  arm64) EXPECT_YML="latest-linux-arm64.yml" ;;
+  *) die "unsupported arch: $ARCH" ;;
+esac
+YML_COUNT=0
+for yml in "$OUTPUT/latest-linux.yml" "$OUTPUT/latest-linux-arm64.yml"; do
+  [ -e "$yml" ] || continue
+  yml_base="$(basename "$yml")"
+  [ "$yml_base" = "$EXPECT_YML" ] || die "更新元数据文件名与架构不符: $yml_base（$ARCH 期望 $EXPECT_YML）"
+  log "update metadata: $yml_base"
+  head -n 24 "$yml" | sed 's/^/    /'
+  if ! node "$PKG_ROOT/scripts/package/verify-update-metadata.cjs" \
+      --node-modules "$STAGE/node_modules" \
+      --yml "$yml" \
+      --out "$OUTPUT" \
+      --version "$APP_VERSION" \
+      --appimage "$APPIMAGE_FINAL" \
+      --deb "$DEB_FINAL"; then
+    die "更新元数据校验失败: $yml_base（详见上方 node 输出）"
+  fi
+  YML_COUNT=$((YML_COUNT + 1))
+done
+if ls "$OUTPUT"/*.AppImage >/dev/null 2>&1; then
+  [ "$YML_COUNT" -ge 1 ] || die "AppImage 已构建但缺少 $EXPECT_YML（检查 packaging/electron-builder.yml 的 publish 配置）"
+else
+  [ "$YML_COUNT" -eq 0 ] || log "WARN: 未构建 AppImage 但存在更新元数据（仅 deb/tar.gz 构建）"
+fi
+
 [ "${#PENDING_SRC[@]}" -ge 1 ] || die "没有产出任何可交付文件"
 
 # 所有校验通过后才复制到宿主 dist/，避免失败时留下半成品被误发。
@@ -299,6 +352,34 @@ for i in "${!PENDING_SRC[@]}"; do
   mv -f "$DIST_DIR/$name.tmp" "$DIST_DIR/$name"
   log "dist/$name  $((size / 1048576))MB"
   N=$((N + 1))
+done
+
+# ---- 4d. 复制自动更新元数据到 dist/ ----------------------------------------
+# latest-linux*.yml（以及可能存在的独立 *.blockmap）是发布的必需资产：
+# 客户端按 <release>/download/<tag>/latest-linux[-arch].yml 拉取通道文件，
+# 缺文件即无法自动更新。校验已在 4b 完成。
+copy_meta_file() {
+  local src="$1" name="$2" size
+  cp -f "$src" "$DIST_DIR/$name.tmp"
+  size="$(stat -c%s "$DIST_DIR/$name.tmp")"
+  [ "$size" -gt 32 ] || die "metadata file too small: $name ($size bytes)"
+  mv -f "$DIST_DIR/$name.tmp" "$DIST_DIR/$name"
+  log "dist/$name  $size bytes"
+}
+
+for yml in "$OUTPUT/latest-linux.yml" "$OUTPUT/latest-linux-arm64.yml"; do
+  [ -e "$yml" ] || continue
+  copy_meta_file "$yml" "$(basename "$yml")"
+done
+# AppImage 的 blockmap 内嵌在文件尾部（blockMapSize）；若 electron-builder 另生成独立
+# .blockmap，则按 <发布资产名>.blockmap 规则一并交付。
+for bm in "$OUTPUT"/*.blockmap; do
+  [ -e "$bm" ] || continue
+  bm_base="$(basename "$bm")"
+  case "$bm_base" in
+    "$APPIMAGE_FINAL.blockmap"|"$DEB_FINAL.blockmap") copy_meta_file "$bm" "$bm_base" ;;
+    *) log "skip blockmap not matching a published artifact: $bm_base" ;;
+  esac
 done
 
 # ---- 5. SHA256SUMS / RELEASE.json -------------------------------------------

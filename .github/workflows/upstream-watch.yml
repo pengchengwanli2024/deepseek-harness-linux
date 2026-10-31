@@ -1,0 +1,185 @@
+# DeepSeek Harness (Linux) — 每日巡检上游 npm 版本并自动发版
+#
+# 触发：每日 cron + workflow_dispatch
+# 链路：update-dsh --check -> （有新版）--apply -> commit/push main -> tag v<appVersion>
+#       -> gh workflow run release.yml -f tag=v<appVersion>
+#
+# 为什么必须 workflow_dispatch：GITHUB_TOKEN 推送的 tag/commit 不会触发其它 workflow
+# （GitHub 的防递归机制），所以 release.yml 必须显式 dispatch。
+#
+# 权限：
+#   contents: write  推送版本提交与 tag
+#   actions: write   dispatch release.yml（workflow_dispatch 需要）
+# 不使用任何 secrets（gh 使用内置 GITHUB_TOKEN）。
+name: Upstream watch
+
+on:
+  schedule:
+    # 每天 03:17 UTC（北京时间 11:17）检查上游
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: upstream-watch
+  cancel-in-progress: false
+
+jobs:
+  follow-upstream:
+    name: Check upstream & auto-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Check npm dist-tags.latest
+        id: check
+        run: |
+          set -euo pipefail
+          set +e
+          raw="$(node scripts/update-dsh.mjs --check --json 2>/tmp/check.stderr)"
+          rc=$?
+          set -e
+          cat /tmp/check.stderr || true
+          echo "update-dsh --check exit=$rc"
+          echo "$raw"
+          if [ "$rc" -eq 2 ]; then
+            echo "::warning::上游检查失败（registry 不可用或版本格式异常），下次计划任务重试"
+            {
+              echo "status=error"
+              echo "new=false"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 10 ]; then
+            echo "::error::update-dsh --check 退出码异常: $rc"
+            exit 1
+          fi
+          printf '%s' "$raw" | node -e '
+            let input = "";
+            process.stdin.on("data", (chunk) => { input += chunk; });
+            process.stdin.on("end", () => {
+              const result = JSON.parse(input);
+              console.log("status=" + result.status);
+              console.log("current=" + (result.current || ""));
+              console.log("latest=" + (result.latest || ""));
+              console.log("new=" + (result.status === "new" ? "true" : "false"));
+              if (result.nextAppVersion) console.log("nextAppVersion=" + result.nextAppVersion);
+            });
+          ' >> "$GITHUB_OUTPUT"
+
+      - name: Apply upstream version
+        if: steps.check.outputs.new == 'true'
+        id: apply
+        run: |
+          set -euo pipefail
+          latest="${{ steps.check.outputs.latest }}"
+          echo "applying upstream dsh $latest"
+          node scripts/update-dsh.mjs --apply --dsh-version "$latest" --json | tee /tmp/apply.json
+          node -e '
+            const fs = require("fs");
+            const result = JSON.parse(fs.readFileSync("/tmp/apply.json", "utf8"));
+            console.log("appVersion=" + result.appVersion);
+            console.log("dshVersion=" + result.dshVersion);
+          ' >> "$GITHUB_OUTPUT"
+          echo "--- changed files ---"
+          git status --porcelain
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "::error::update-dsh --apply 没有产生任何变更（versions.json 与 package.json 不一致？）"
+            exit 1
+          fi
+
+      - name: Commit, tag and push
+        if: steps.check.outputs.new == 'true'
+        run: |
+          set -euo pipefail
+          app="${{ steps.apply.outputs.appVersion }}"
+          dsh="${{ steps.apply.outputs.dshVersion }}"
+          tag="v$app"
+          echo "app=$app dsh=$dsh tag=$tag"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add versions.json package.json README.md README.en.md docs
+          git diff --cached --stat
+          if git diff --cached --quiet; then
+            echo "::error::没有可提交的变更"
+            exit 1
+          fi
+          git commit -m "chore(release): follow upstream @deepseek-ai/dsh $dsh (app $app)"
+
+          pushed=0
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              pushed=1
+              break
+            fi
+            echo "::warning::push main 失败（第 $attempt 次），rebase 后重试"
+            git pull --rebase --autostash origin main || true
+            sleep "$((attempt * 3))"
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "::error::无法推送 main（检查分支保护/权限）"
+            exit 1
+          fi
+          echo "pushed main: $(git rev-parse --short HEAD)"
+
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::tag $tag 已存在（版本号冲突），请人工检查 versions.json appVersion"
+            exit 1
+          fi
+          git tag -a "$tag" -m "DeepSeek Harness (Linux) $app"
+          git push origin "refs/tags/$tag"
+          echo "pushed tag $tag"
+
+      - name: Dispatch release workflow
+        if: steps.check.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${{ steps.apply.outputs.appVersion }}"
+          echo "dispatching release.yml tag=$tag"
+          gh workflow run release.yml --ref main -f tag="$tag" -f prerelease=false
+
+          run_id=""
+          attempt=0
+          while [ -z "$run_id" ] && [ "$attempt" -lt 12 ]; do
+            attempt=$((attempt + 1))
+            run_id="$(gh run list --workflow=release.yml --event=workflow_dispatch --limit=1 --json databaseId --jq '.[0].databaseId // empty')"
+            if [ -z "$run_id" ]; then sleep 5; fi
+          done
+          if [ -z "$run_id" ]; then
+            echo "::error::release.yml 未启动（检查 actions: write 权限与 workflow 是否在 main 上）"
+            exit 1
+          fi
+          echo "release workflow: https://github.com/${{ github.repository }}/actions/runs/$run_id"
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "### Upstream watch"
+            echo "- 检查结果: ${{ steps.check.outputs.status }}"
+            echo "- 当前 dsh: ${{ steps.check.outputs.current }}"
+            echo "- npm latest: ${{ steps.check.outputs.latest }}"
+            echo "- 是否升级: ${{ steps.check.outputs.new }}"
+            if [ "${{ steps.check.outputs.new }}" = "true" ]; then
+              echo "- 新版本: app ${{ steps.apply.outputs.appVersion }} / dsh ${{ steps.apply.outputs.dshVersion }}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

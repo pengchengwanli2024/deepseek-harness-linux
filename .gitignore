@@ -1,7 +1,8 @@
-node_modules/
-build/
-dist/
-runtime/
+# 仅忽略仓库根目录的构建输出（scripts/runtime 等源码目录必须可被追踪）
+/node_modules/
+/build/
+/dist/
+/runtime/
 .DS_Store
 *.log
 *.tmp

@@ -18,13 +18,14 @@
 
 - 名称：**DeepSeek Harness (Linux)**（展示名），项目代号 `dsh-linux`。
 - 应用 ID：`io.github.dshlinux.deepseek-harness`；可执行文件：`deepseek-harness`。
-- 版本：`0.2.1`（应用版本），内置 dsh `0.2.1-rc.5`；构建号见 `dist/RELEASE.json`。
-- 交付物（dist/）：
+- 版本：`0.2.1`（应用版本），内置 dsh `0.2.1-rc.5`；版本唯一源为仓库根 `versions.json`（appVersion/dshVersion/nodeVersion/electronVersion/electronBuilderVersion），构建号见 `dist/RELEASE.json`。
+- 交付物（dist/，同时作为 GitHub Release 资产）：
   - `DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage`
   - `DeepSeek-Harness-Linux-0.2.1-amd64.deb`
   - `DeepSeek-Harness-Linux-0.2.1-arm64.AppImage`
   - `DeepSeek-Harness-Linux-0.2.1-arm64.deb`
   - `SHA256SUMS`、`RELEASE.json`
+  - 自动更新元数据：`latest-linux.yml`（x64）、`latest-linux-arm64.yml`（arm64）及 electron-builder 生成的 `*.blockmap`（如有）
   - 可选（不随本次发布）：`deepseek-harness-linux-<ver>-<arch>.tar.gz`（可用 `build-linux.sh <arch> --targets tar.gz` 自行构建）
 - 辅助交付：`scripts/install-cli.sh`（无桌面/服务器环境安装 CLI + dsh-web 启动器）。
 
@@ -36,6 +37,7 @@
 | Node.js | 24.22.2（官方 dist linux tar.xz） | 运行时，含 npm |
 | Electron | 45.2.1 | 桌面壳 |
 | electron-builder | 26.18.0 | 打包 |
+| electron-updater | 6.8.11 | AppImage 应用内自动更新 |
 | 基线镜像 | debian:bookworm-slim / node:24-bookworm | glibc 2.36 构建基线 |
 
 兼容性：glibc >= 2.28（Node 24 要求），建议 Debian 12 / Ubuntu 22.04+；x64 与 arm64；X11 与 Wayland（XWayland）。
@@ -145,7 +147,7 @@ runtime/linux-x64/            # 或 linux-arm64
 1. `scripts/runtime/build-runtime.sh`（每 arch 一次）
 2. `npm ci`（根目录，Electron 壳依赖；缓存到 build/cache/npm）
 3. `scripts/package/build-linux.sh`（每 arch 一次）
-4. 汇总 SHA256SUMS/RELEASE.json 并输出摘要。
+4. 按架构合并 SHA256SUMS/RELEASE.json 并输出摘要；版本默认从 `versions.json` 读取，环境变量（APP_VERSION/DSH_VERSION/NODE_VERSION/ELECTRON_VERSION/BUILDER_VERSION）可覆盖。
 
 开发快捷方式（根 package.json scripts）：`npm start`（DSH_LINUX_RUNTIME 指向本机 runtime）、`npm run dist:linux`。
 
@@ -164,9 +166,18 @@ runtime/linux-x64/            # 或 linux-arm64
 - AC3 安装：deb 在干净 ubuntu:24.04 容器中 `dpkg -i` + `apt-get -f install` 成功；`/usr/bin/deepseek-harness` 存在；能启动。
 - AC4 单实例/错误处理：二次启动聚焦已有窗口；服务器被杀后 UI 有错误提示且可重启。
 - AC5 文档：README 含安装、首次配置（API Key）、数据目录、卸载、FAQ、构建说明、非官方声明；截图来自真实运行。
-- AC6 交付：dist 内四件套 + SHA256SUMS + RELEASE.json；校验和可复算。
+- AC6 交付：dist 内四件套 + SHA256SUMS + RELEASE.json + `latest-linux*.yml`；校验和可复算。
+- AC7 自动更新：AppImage 打包后含 `electron-updater`，`latest-linux*.yml` 的 path/sha512/size 与实际 AppImage 一致；`--updater-check` 能输出 UPDATE_AVAILABLE/UPDATE_NONE；非 AppImage（deb）不启用自动下载。
 
-## 10. 协作规则
+## 10. 版本、自动升级与发布
+
+- 版本唯一源：`versions.json`；发版前 `scripts/update-dsh.sh --apply` 更新版本并同步 package.json/README/docs。
+- 上游跟随：`.github/workflows/upstream-watch.yml` 每日检查 npm `dist-tags.latest`，有新版本则自动 bump、commit/push、打 tag 并 dispatch `release.yml`。
+- 发布：`.github/workflows/release.yml` 在原生 x64/arm64 runner 上构建四件套，合并元数据并创建 GitHub Release；`latest-linux*.yml` 必须随 release 上传。
+- 应用内更新：AppImage 通过 electron-updater 从 GitHub Releases 检查/下载/安装；deb 用户手动下载新版；可用 `DSH_LINUX_DISABLE_UPDATER=1` 或 `DSH_LINUX_UPDATE_FEED_URL` 覆盖。
+- 用户侧说明与维护流程见 README §7 与 `docs/CI.zh-CN.md`、`docs/MAINTAINING.zh-CN.md`。
+
+## 11. 协作规则
 
 - 先 `team_task_get` 读取任务，再 `team_task_update(action=claim, expected_revision=当前值)`；完成时 `complete`。
 - 只写自己 write scope；跨域改动先在任务评论/消息中说明，由 Lead 协调。
@@ -176,9 +187,10 @@ runtime/linux-x64/            # 或 linux-arm64
 - 时间盒：单步超过 5 分钟无进展先降级方案并上报。
 - 不要执行 `present`；交付展示由 Lead 统一完成。
 
-## 11. 已知限制
+## 12. 已知限制
 
-- 非官方构建，不提供自动更新；升级需重新下载安装包。
+- 非官方构建；AppImage 支持应用内自动更新（GitHub Releases），deb 需手动升级；无强制更新/托盘。
+- 自动更新包未做代码签名（Linux AppImage 常态），更新源为 GitHub Releases；如更换仓库需同步 `packaging/electron-builder.yml` 的 publish 配置。
 - 官方 Windows/macOS 桌面专属功能（强制更新、原生目录选择器、系统级通知样式）不保证一致；Web UI 功能完整。
 - 不内置 Python/Office 运行时；office 技能使用 dsh 自带的 libreoffice-kit-wasm。需要系统 LibreOffice 的功能按官方 CLI 行为。
 - Linux 桌面安全沙箱依赖发行版 userns/SUID 配置，AppImage 可能以 `--no-sandbox` 运行。

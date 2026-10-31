@@ -47,7 +47,7 @@ DRY_RUN=0
 PROJECT_DIR="${DSH_PKG_PROJECT_DIR:-$ROOT_DIR}"
 RUNTIME_DIR=""
 OUT_DIR="${DSH_PKG_OUT_DIR:-$ROOT_DIR/dist}"
-EVIDENCE_DIR="$ROOT_DIR/build/package"
+EVIDENCE_DIR="${DSH_PKG_EVIDENCE_DIR:-$ROOT_DIR/build/package}"
 CACHE_DIR="$ROOT_DIR/build/cache"
 
 usage() { sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# {0,1}//'; }
@@ -248,9 +248,19 @@ add_artifact() {
   ARTIFACTS="${ARTIFACTS}${1} $(( $(size_of "$f") / 1048576 ))MB $(sha256_of "$f")
 "
 }
+# 自动更新通道文件（electron-updater 按架构选择 latest-linux.yml / latest-linux-arm64.yml）
+case "$ARCH" in
+  arm64) CHANNEL_YML="latest-linux-arm64.yml" ;;
+  *)     CHANNEL_YML="latest-linux.yml" ;;
+esac
+add_artifact "$CHANNEL_YML"
+
 add_artifact "$APPIMAGE_NAME"
 add_artifact "$DEB_NAME"
 add_artifact "$TARBALL_NAME"
+if [ -f "$OUT_DIR/$APPIMAGE_NAME" ] && [ ! -f "$OUT_DIR/$CHANNEL_YML" ]; then
+  die "构建产出 AppImage 但缺少自动更新通道文件 $CHANNEL_YML（检查 packaging/electron-builder.yml 的 publish 配置）"
+fi
 [ "$N" -ge 1 ] || die "构建结束但未找到任何产物（检查 $OUT_DIR 与 ${LOG}）"
 
 {

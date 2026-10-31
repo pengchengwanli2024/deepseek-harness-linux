@@ -9,12 +9,22 @@
   "author": {
     "name": "DSH Linux contributors"
   },
-  "homepage": "https://github.com/deepseek-ai/dsh",
+  "homepage": "https://github.com/pengchengwanli2024/deepseek-harness-linux",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pengchengwanli2024/deepseek-harness-linux.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pengchengwanli2024/deepseek-harness-linux/issues"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
     "smoke": "electron . --no-sandbox --smoke-test",
     "dist:linux": "bash scripts/package/build-linux.sh"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
   },
   "devDependencies": {
     "electron": "45.2.1",

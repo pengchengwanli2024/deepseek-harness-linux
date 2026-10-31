@@ -1,0 +1,67 @@
+name: 功能建议
+description: 为 DeepSeek Harness (Linux) 桌面壳、打包、文档或 CI 提出改进建议
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢建议！请先确认这个功能属于本项目的范围（桌面壳 / 运行时 / 打包 / 文档 / CI）。
+        dsh 本身的模型、Web UI、插件能力属于上游项目：<https://github.com/deepseek-ai/deepseek-harness>。
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过已有 issue 和 PR，未发现相同建议
+          required: true
+        - label: 该建议针对本项目的桌面封装/打包/文档，而非上游 dsh 功能
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 你遇到了什么不便？当前行为是什么？
+      placeholder: 描述使用场景与痛点
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 期望的方案
+      description: 你希望应用/脚本/文档如何改变？
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 考虑过的替代方案
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及范围
+      options:
+        - Electron 桌面壳（app/）
+        - 运行时（scripts/runtime/）
+        - 打包与安装包（packaging/、scripts/package/）
+        - 文档与截图（README、docs/）
+        - CI / 发布流程（.github/、scripts/update-dsh.*）
+        - CLI 安装脚本（scripts/install-cli.sh）
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 其他信息
+      description: 参考链接、截图、上游对应实现等。
+    validations:
+      required: false

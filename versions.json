@@ -1,0 +1,7 @@
+{
+  "appVersion": "0.2.1",
+  "dshVersion": "0.2.1-rc.5",
+  "nodeVersion": "24.22.2",
+  "electronVersion": "45.2.1",
+  "electronBuilderVersion": "26.18.0"
+}

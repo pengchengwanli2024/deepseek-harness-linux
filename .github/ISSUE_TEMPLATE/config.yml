@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用与安装问题（请先阅读 FAQ）
+    url: https://github.com/pengchengwanli2024/deepseek-harness-linux/blob/main/docs/FAQ.zh-CN.md
+    about: AppImage/FUSE、Wayland、bubblewrap、中文字体、代理、日志位置等常见问题
+  - name: 安装与升级说明
+    url: https://github.com/pengchengwanli2024/deepseek-harness-linux/blob/main/docs/INSTALL.zh-CN.md
+    about: AppImage / deb / CLI 安装、数据目录、卸载与清理
+  - name: 安全漏洞（私下报告）
+    url: https://github.com/pengchengwanli2024/deepseek-harness-linux/security/policy
+    about: 请勿公开披露漏洞细节；使用 GitHub Security Advisories 私下报告
+  - name: 上游 DeepSeek Harness 项目
+    url: https://github.com/deepseek-ai/deepseek-harness
+    about: dsh 本身的功能、模型能力与上游问题请反馈到上游仓库

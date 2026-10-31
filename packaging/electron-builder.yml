@@ -16,6 +16,19 @@ appId: io.github.dshlinux.deepseek-harness
 productName: DeepSeek Harness
 copyright: Copyright (c) 2026 DeepSeek Harness Linux contributors
 
+# 应用内自动更新（electron-updater 6.8.11）发布源。
+# 即使构建脚本使用 --publish never（不真正上传），electron-builder 仍会：
+#   1) 在 resources/app-update.yml 写入 provider/owner/repo（运行时 electron-updater 读取）；
+#   2) 生成 latest-linux.yml（x64）/ latest-linux-arm64.yml（arm64）与内嵌 blockmap。
+# 发布时这些 yml 必须作为 GitHub Release 资产上传，否则客户端 404
+# （electron-updater 从 releases.atom 找到最新 tag 后，直接请求
+#  https://github.com/<owner>/<repo>/releases/download/<tag>/<channel>.yml）。
+publish:
+  provider: github
+  owner: pengchengwanli2024
+  repo: deepseek-harness-linux
+  releaseType: release
+
 directories:
   output: ${env.DSH_PKG_OUTPUT}
   buildResources: ${env.DSH_PKG_BUILD_RESOURCES}
@@ -66,11 +79,14 @@ linux:
       Terminal: "false"
 
 appImage:
-  artifactName: deepseek-harness-${version}-${arch}.${ext}
+  # 产物名必须与 GitHub Release 资产名完全一致：electron-updater 按
+  # latest-linux*.yml 的 files[].url 在 release 资产中查找文件，改名会导致 404。
+  # 因此这里直接使用最终发布名（由 scripts/package/in-container.sh 渲染 env 宏）。
+  artifactName: "${env.DSH_ARTIFACT_APPIMAGE}"
 
 deb:
   packageName: deepseek-harness-linux
-  artifactName: deepseek-harness-${version}-${arch}.${ext}
+  artifactName: "${env.DSH_ARTIFACT_DEB}"
   packageCategory: utils
   priority: optional
   compression: xz

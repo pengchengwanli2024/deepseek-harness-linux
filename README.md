@@ -1,5 +1,12 @@
 # DeepSeek Harness (Linux)
 
+[![License: MIT](https://img.shields.io/github/license/pengchengwanli2024/deepseek-harness-linux?label=License)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/pengchengwanli2024/deepseek-harness-linux?sort=semver)](https://github.com/pengchengwanli2024/deepseek-harness-linux/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/pengchengwanli2024/deepseek-harness-linux/ci.yml?label=CI)](https://github.com/pengchengwanli2024/deepseek-harness-linux/actions/workflows/ci.yml)
+[![Platform](https://img.shields.io/badge/platform-Linux%20x86__64%20%7C%20arm64-informational)](docs/INSTALL.zh-CN.md)
+
+**仓库**：<https://github.com/pengchengwanli2024/deepseek-harness-linux> · **上游**：<https://github.com/deepseek-ai/deepseek-harness>
+
 > **非官方 Linux 桌面版** · 基于官方 npm 包 [`@deepseek-ai/dsh@0.2.1-rc.5`](https://www.npmjs.com/package/@deepseek-ai/dsh) 构建
 >
 > 应用版本 **0.2.1** · 内置 dsh **0.2.1-rc.5** · Node.js **24.22.2** · Electron **45.2.1**
@@ -23,12 +30,14 @@
 - [4. 首次启动与配置](#4-首次启动与配置)
 - [5. 数据目录与日志](#5-数据目录与日志)
 - [6. 环境变量](#6-环境变量)
-- [7. 升级与卸载](#7-升级与卸载)
+- [7. 更新机制、升级与卸载](#7-更新机制升级与卸载)
 - [8. 命令行参数](#8-命令行参数)
 - [9. 从源码构建](#9-从源码构建)
 - [10. 常见问题](#10-常见问题)
 - [11. 版本与许可证](#11-版本与许可证)
 - [12. 已知限制](#12-已知限制)
+- [13. 参与贡献](#13-参与贡献)
+- [14. 安全](#14-安全)
 
 ---
 
@@ -58,7 +67,7 @@
 
 ## 3. 安装
 
-发布产物位于 `dist/` 目录（下载页或构建输出）：
+发布产物托管在 [GitHub Releases](https://github.com/pengchengwanli2024/deepseek-harness-linux/releases)（自行构建时位于 `dist/`）：
 
 | 文件 | 适用平台 |
 | --- | --- |
@@ -283,27 +292,36 @@ tail -f ~/.config/deepseek-harness/logs/server.log
 | `DSH_LINUX_NO_SANDBOX` | 设为 `1` 强制给 Electron 传 `--no-sandbox`（AppImage/root 下自动启用） | 未设置 |
 | `DSH_LINUX_DISABLE_GPU` | 设为 `1` 禁用硬件加速（虚拟机/远程桌面无 GPU 时有用） | 未设置 |
 | `DSH_LINUX_RUNTIME` / `DSH_LINUX_NODE` / `DSH_LINUX_DSH_ENTRY` | 开发调试：覆盖运行时路径 / Node 路径 / dsh 入口 | 未设置 |
+| `DSH_LINUX_DISABLE_UPDATER` | 设为 `1` 禁用应用内自动更新检查 | 未设置 |
+| `DSH_LINUX_UPDATE_FEED_URL` | 覆盖应用内更新源（generic provider，镜像/调试用） | 使用 GitHub Releases |
 
 > 代理变量同样会从 `$DSH_HOME/.env` 读取；生效顺序为：进程环境 > 工作目录 `.env` > `$DSH_HOME/.env`。
 
-## 7. 升级与卸载
+## 7. 更新机制、升级与卸载
 
-### 升级
+### 7.1 更新机制
 
-本应用**不提供自动更新**，升级即下载新版本安装包重新安装（用户数据保留）：
+- **应用内更新（AppImage）**：AppImage 打包版启动后会在后台静默检查 GitHub Releases（启动约 8 秒后），也可通过菜单 **帮助 → 检查更新…** 手动检查；发现新版本时提示下载，下载完成后重启即可安装。更新源为 GitHub Releases，元数据为发布资产中的 `latest-linux*.yml` 与 blockmap 文件。
+- **deb 手动升级**：deb 版本不启用应用内更新，请从 Releases 下载新包重新安装（见 7.2）。
+- **自动跟随上游**：维护者侧通过 CI 每日检查上游 `@deepseek-ai/dsh` 版本，发现新版本后更新版本号、构建两架构安装包并发布到 Releases。链路说明见 [docs/CI.zh-CN.md](docs/CI.zh-CN.md)，维护者操作见 [docs/MAINTAINING.zh-CN.md](docs/MAINTAINING.zh-CN.md)。
+- **关闭自动检查**：设置环境变量 `DSH_LINUX_DISABLE_UPDATER=1` 启动即可禁用（离线/测试环境）。
+
+### 7.2 升级
+
+升级即下载新版本安装包重新安装（用户数据保留）：
 
 ```bash
 # deb
 sudo apt install ./DeepSeek-Harness-Linux-0.2.1-amd64.deb
 
-# AppImage：下载新文件后替换旧文件即可
+# AppImage：下载新文件后替换旧文件即可，或等待应用内更新提示按提示重启
 
 # CLI
 bash scripts/install-cli.sh            # 重新执行即升级到默认版本
 bash scripts/install-cli.sh --version 0.2.1-rc.5
 ```
 
-### 卸载
+### 7.3 卸载
 
 ```bash
 # deb
@@ -335,6 +353,7 @@ rm -rf ~/.config/deepseek-harness     # 配置 + DSH_HOME + 日志
 | `--help` / `-h` | 打印帮助并退出 |
 | `--smoke-test` | 自动化验证：服务就绪并加载页面后打印 `SMOKE_OK <url>` 退出（测试用） |
 | `--screenshot=<path>` | 页面加载完成 2 秒后截图保存为 PNG，打印 `SCREENSHOT_OK <path>`（测试用） |
+| `--updater-check` | 检查更新并输出 `UPDATE_AVAILABLE` / `UPDATE_NONE` / `UPDATE_ERROR` 后退出（测试用） |
 | `--dev` | 开发模式：显示开发者工具菜单项与 F12（仅调试用） |
 
 ```bash
@@ -350,6 +369,11 @@ deepseek-harness --screenshot=/tmp/dsh.png
 ## 9. 从源码构建
 
 前置：Linux 或 macOS 宿主机、Docker（构建在容器内完成）、Node.js ≥ 22（顶层编排脚本使用）。宿主 npm 缓存异常时可设置 `npm_config_cache` 环境变量指向可写目录。
+
+```bash
+git clone https://github.com/pengchengwanli2024/deepseek-harness-linux.git
+cd deepseek-harness-linux
+```
 
 ```bash
 # 一键构建（默认 x64 + arm64，产出 AppImage/deb；tar.gz 用 --targets tar.gz 可选）
@@ -395,24 +419,58 @@ bash scripts/build.sh --arch arm64 --targets AppImage,deb
 | 构建基线 | Debian 12 / `node:24-bookworm`（glibc 2.36） |
 | 运行时兼容 | glibc ≥ 2.28 |
 
-具体构建时间、文件大小与校验和见 `dist/RELEASE.json` 与 `dist/SHA256SUMS`。
+版本信息的唯一来源是 [`versions.json`](versions.json)；具体构建时间、文件大小与校验和见 `dist/RELEASE.json` 与 `dist/SHA256SUMS`。
 
 **许可证**：
 
 - 本项目代码：[MIT](LICENSE)
 - 上游 DeepSeek Harness（`@deepseek-ai/dsh`）：MIT
 - 内置 Node.js、Electron 及第三方依赖：遵循各自许可证，详见运行包内 `licenses/` 与各 npm 包的 `LICENSE` 文件
+- 变更记录：[CHANGELOG.md](CHANGELOG.md)
 - 非官方声明与商标说明：[NOTICE.md](NOTICE.md)
 
 ## 12. 已知限制
 
-- **非官方构建**：不提供自动更新，功能一致性以官方 CLI/Web UI 为准。
+- **非官方构建**：应用内自动更新仅 AppImage 支持，deb 需手动下载新包；功能一致性以官方 CLI/Web UI 为准。
 - **无托盘**：关闭窗口即退出应用（同时停止 dsh 服务）。
 - **AppImage 沙箱较弱**：受 AppImage 机制限制无法使用 setuid sandbox，默认 `--no-sandbox`；需要更强隔离请用 deb。
 - **不内置 Python/Office 运行时**：office 技能使用 dsh 自带的 libreoffice-kit-wasm；需要系统 LibreOffice 的功能按官方行为。
 - **Linux 桌面安全依赖发行版配置**：用户命名空间/SUID 沙箱不可用时，命令沙箱会降级或不可用。
 - **Wayland**：默认走 XWayland，个别合成器下可能需要手动指定 `--ozone-platform=wayland`。
 - **官方 Windows/macOS 桌面专属能力**（强制更新、系统原生目录选择器等）在 Linux 版中不保证一致。
+
+---
+
+## 13. 参与贡献
+
+欢迎提交缺陷报告、功能建议、文档改进与上游版本跟进。开始之前请阅读：
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)：开发环境、构建/验证命令、提交与 PR 规范
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)：行为准则（Contributor Covenant 2.1）
+- [SECURITY.md](SECURITY.md)：安全问题**私下**报告渠道
+- [docs/MAINTAINING.zh-CN.md](docs/MAINTAINING.zh-CN.md)：发布、自动跟随上游与安全响应维护手册
+
+快速开始：
+
+```bash
+git clone https://github.com/pengchengwanli2024/deepseek-harness-linux.git
+cd deepseek-harness-linux
+
+# 构建当前架构（需要 Docker）
+bash scripts/build.sh --arch x64
+
+# 运行容器化验收（按需选择 --mode）
+bash scripts/test/verify-linux.sh --arch x64 --mode runtime,shell
+```
+
+> 本项目是社区制作的非官方发行版；dsh 本身的功能问题请反馈到上游仓库 <https://github.com/deepseek-ai/deepseek-harness>。
+
+## 14. 安全
+
+- 请**不要**在公开 issue 中披露漏洞细节、API Key、token 或可复现的敏感信息。
+- 私下报告：GitHub Security Advisories（[Report a vulnerability](https://github.com/pengchengwanli2024/deepseek-harness-linux/security/advisories/new)），详见 [SECURITY.md](SECURITY.md)。
+- 支持范围：最新 Release。上游 dsh、Node.js、Electron/Chromium 的问题请反馈给对应项目。
+- 安全设计：dsh 服务仅监听 `127.0.0.1` 并使用一次性 token URL；AppImage 因无法保留 setuid 而以 `--no-sandbox` 运行，需要更强隔离请使用 deb；日志可能包含提示词与本地路径，反馈前请脱敏。
 
 ---
 

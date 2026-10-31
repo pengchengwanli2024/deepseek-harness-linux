@@ -1,0 +1,405 @@
+# DeepSeek Harness (Linux) — 发布流水线（原生双架构 runner，无 QEMU）
+#
+# 触发方式（必须用 workflow_dispatch，因为 GITHUB_TOKEN 推送 tag 不会触发 workflow）:
+#   gh workflow run release.yml --ref main -f tag=v0.2.2 -f prerelease=false
+#
+# 流程：
+#   prepare（解析版本/校验 tag） -> build（x64: ubuntu-24.04，arm64: ubuntu-24.04-arm，各自原生构建）
+#   -> release（合并两架构 dist、重算 SHA256SUMS/RELEASE.json、gh release create 上传全部产物）
+#
+# 每个 build job 只构建本机架构，构建脚本内部使用 Docker（runner 自带 Docker），因此不需要 QEMU。
+# 发布产物：4 个安装包 + SHA256SUMS + RELEASE.json + 更新元数据（latest-linux*.yml / *.blockmap，若生成）。
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要构建并发布的 tag（如 v0.2.2；留空则使用 v<versions.json appVersion>）"
+        required: false
+        type: string
+      prerelease:
+        description: "标记为预发布（pre-release）"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Resolve versions & tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      appVersion: ${{ steps.resolve.outputs.appVersion }}
+      dshVersion: ${{ steps.resolve.outputs.dshVersion }}
+      nodeVersion: ${{ steps.resolve.outputs.nodeVersion }}
+      electronVersion: ${{ steps.resolve.outputs.electronVersion }}
+      electronBuilderVersion: ${{ steps.resolve.outputs.electronBuilderVersion }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Resolve versions and tag
+        id: resolve
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          node > /tmp/versions.env <<'NODE'
+          const fs = require('fs');
+          const fail = (msg) => { console.error('::error::' + msg); process.exit(1); };
+          const versions = JSON.parse(fs.readFileSync('versions.json', 'utf8'));
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          for (const key of ['appVersion', 'dshVersion', 'nodeVersion', 'electronVersion', 'electronBuilderVersion']) {
+            if (typeof versions[key] !== 'string' || versions[key] === '') fail('versions.json 缺少字段 ' + key);
+          }
+          if (!/^\d+\.\d+\.\d+$/.test(versions.appVersion)) fail('versions.json appVersion 不是 X.Y.Z: ' + versions.appVersion);
+          if (pkg.version !== versions.appVersion) fail('package.json version=' + pkg.version + ' 与 versions.json appVersion=' + versions.appVersion + ' 不一致（先运行 scripts/update-dsh.sh --apply）');
+          const dev = pkg.devDependencies || {};
+          if (dev.electron !== versions.electronVersion) fail('package.json electron=' + dev.electron + ' 与 versions.json electronVersion=' + versions.electronVersion + ' 不一致');
+          if (dev['electron-builder'] !== versions.electronBuilderVersion) fail('package.json electron-builder=' + dev['electron-builder'] + ' 与 versions.json electronBuilderVersion=' + versions.electronBuilderVersion + ' 不一致');
+          for (const key of ['appVersion', 'dshVersion', 'nodeVersion', 'electronVersion', 'electronBuilderVersion']) {
+            console.log(key + '=' + versions[key]);
+          }
+          NODE
+          cat /tmp/versions.env
+          set -a
+          # shellcheck disable=SC1091
+          . /tmp/versions.env
+          set +a
+
+          tag="$INPUT_TAG"
+          if [ -z "$tag" ]; then tag="v$appVersion"; fi
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::tag 格式非法: ${tag}（期望 vX.Y.Z）"
+            exit 1
+          fi
+          if [ -n "$INPUT_TAG" ] && [ "$tag" != "v$appVersion" ]; then
+            echo "::error::输入 tag=${tag} 与 versions.json appVersion=${appVersion}（期望 v${appVersion}）不一致"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "tag $tag -> $(git rev-parse --short "refs/tags/$tag")"
+          else
+            echo "::error::tag ${tag} 不存在。请先创建并推送 tag（git tag v${appVersion} && git push origin v${appVersion}），再重新触发本 workflow。"
+            exit 1
+          fi
+          {
+            echo "tag=$tag"
+            for key in appVersion dshVersion nodeVersion electronVersion electronBuilderVersion; do
+              echo "$key=${!key}"
+            done
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Job summary
+        run: |
+          {
+            echo "### Release prepare"
+            echo "- tag: ${{ steps.resolve.outputs.tag }}"
+            echo "- appVersion: ${{ steps.resolve.outputs.appVersion }}"
+            echo "- dshVersion: ${{ steps.resolve.outputs.dshVersion }}"
+            echo "- nodeVersion: ${{ steps.resolve.outputs.nodeVersion }}"
+            echo "- electron: ${{ steps.resolve.outputs.electronVersion }} / electron-builder: ${{ steps.resolve.outputs.electronBuilderVersion }}"
+            echo "- prerelease: ${{ inputs.prerelease }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            artifactArch: x86_64
+            debArch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            artifactArch: arm64
+            debArch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Show build environment
+        run: |
+          set -euo pipefail
+          echo "runner=$RUNNER_NAME os=$RUNNER_OS arch=$RUNNER_ARCH"
+          node --version
+          npm --version
+          docker version
+          docker info >/dev/null
+          df -h / | tail -n 1
+
+      - name: Free disk space
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          df -h / | tail -n 1
+
+      - name: Verify checked-out versions
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const versions = JSON.parse(fs.readFileSync("versions.json", "utf8"));
+            const expect = {
+              appVersion: process.env.EXPECT_APP,
+              dshVersion: process.env.EXPECT_DSH,
+            };
+            for (const key of Object.keys(expect)) {
+              if (versions[key] !== expect[key]) {
+                console.error("::error::versions.json " + key + "=" + versions[key] + " != expected " + expect[key]);
+                process.exit(1);
+              }
+            }
+            console.log("checked-out versions: OK (" + versions.appVersion + " / " + versions.dshVersion + ")");
+          '
+        env:
+          EXPECT_APP: ${{ needs.prepare.outputs.appVersion }}
+          EXPECT_DSH: ${{ needs.prepare.outputs.dshVersion }}
+
+      - name: Build runtime + app + packages (${{ matrix.arch }})
+        env:
+          CI: "true"
+          APP_VERSION: ""
+          DSH_VERSION: ""
+          NODE_VERSION: ""
+          ELECTRON_VERSION: ""
+          BUILDER_VERSION: ""
+        run: |
+          set -euo pipefail
+          bash scripts/build.sh --arch "${{ matrix.arch }}" --targets AppImage,deb
+
+      - name: Verify artifacts
+        run: |
+          set -euo pipefail
+          app="${{ needs.prepare.outputs.appVersion }}"
+          appimage="dist/DeepSeek-Harness-Linux-$app-${{ matrix.artifactArch }}.AppImage"
+          deb="dist/DeepSeek-Harness-Linux-$app-${{ matrix.debArch }}.deb"
+          for file in "$appimage" "$deb"; do
+            if [ ! -f "$file" ]; then
+              echo "::error::缺少产物: $file"
+              ls -lh dist || true
+              exit 1
+            fi
+            size="$(stat -c%s "$file")"
+            if [ "$size" -lt 104857600 ]; then
+              echo "::error::产物体积异常: $file ($size bytes)"
+              exit 1
+            fi
+            echo "OK $file ($size bytes)"
+          done
+          test -f dist/SHA256SUMS
+          test -f dist/RELEASE.json
+          node -e '
+            const fs = require("fs");
+            const release = JSON.parse(fs.readFileSync("dist/RELEASE.json", "utf8"));
+            const want = process.env.ARTIFACT_ARCH;
+            if (!Array.isArray(release.architectures) || !release.architectures.includes(want)) {
+              console.error("::error::RELEASE.json architectures=" + JSON.stringify(release.architectures) + " 不含 " + want);
+              process.exit(1);
+            }
+            console.log("RELEASE.json architectures: " + release.architectures.join(","));
+          '
+          echo "--- dist ---"
+          ls -lh dist
+        env:
+          ARTIFACT_ARCH: ${{ matrix.artifactArch }}
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    needs: [prepare, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout (tag)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify merged artifact set
+        run: |
+          set -euo pipefail
+          app="${{ needs.prepare.outputs.appVersion }}"
+          for file in \
+            "dist/DeepSeek-Harness-Linux-$app-x86_64.AppImage" \
+            "dist/DeepSeek-Harness-Linux-$app-amd64.deb" \
+            "dist/DeepSeek-Harness-Linux-$app-arm64.AppImage" \
+            "dist/DeepSeek-Harness-Linux-$app-arm64.deb"; do
+            if [ ! -f "$file" ]; then
+              echo "::error::合并后缺少产物: $file"
+              ls -lh dist || true
+              exit 1
+            fi
+          done
+          # 自动更新元数据是 AppImage 应用内更新的必需资产（缺文件客户端会 404）。
+          for yml in dist/latest-linux.yml dist/latest-linux-arm64.yml; do
+            if [ ! -f "$yml" ]; then
+              echo "::error::缺少自动更新元数据: $yml（AppImage 的应用内更新将失效）"
+              ls -lh dist || true
+              exit 1
+            fi
+          done
+          echo "--- merged dist ---"
+          ls -lh dist
+
+      - name: Regenerate SHA256SUMS and RELEASE.json (both architectures)
+        run: |
+          set -euo pipefail
+          for arch in x64 arm64; do
+            node scripts/package/release-metadata.mjs \
+              --dist dist \
+              --arch "$arch" \
+              --version "${{ needs.prepare.outputs.appVersion }}" \
+              --dsh-version "${{ needs.prepare.outputs.dshVersion }}" \
+              --node-version "${{ needs.prepare.outputs.nodeVersion }}" \
+              --electron-version "${{ needs.prepare.outputs.electronVersion }}" \
+              --builder-version "${{ needs.prepare.outputs.electronBuilderVersion }}" \
+              --commit "$(git rev-parse --short 'HEAD^{commit}')" \
+              --dirty false
+          done
+          echo "--- SHA256SUMS ---"
+          cat dist/SHA256SUMS
+          echo "--- verify checksums ---"
+          ( cd dist && sha256sum -c SHA256SUMS )
+          node -e '
+            const fs = require("fs");
+            const release = JSON.parse(fs.readFileSync("dist/RELEASE.json", "utf8"));
+            const archs = (release.architectures || []).slice().sort();
+            if (archs.join(",") !== "arm64,x86_64") {
+              console.error("::error::RELEASE.json architectures 异常: " + archs.join(","));
+              process.exit(1);
+            }
+            if (release.version !== process.env.APP_VERSION || release.dshVersion !== process.env.DSH_VERSION) {
+              console.error("::error::RELEASE.json 版本字段异常: version=" + release.version + " dshVersion=" + release.dshVersion);
+              process.exit(1);
+            }
+            for (const artifact of release.artifacts || []) {
+              if (!fs.existsSync("dist/" + artifact.name)) {
+                console.error("::error::RELEASE.json 引用了不存在的产物: " + artifact.name);
+                process.exit(1);
+              }
+            }
+            console.log("RELEASE.json: " + archs.join(",") + ", " + (release.artifacts || []).length + " artifact(s)");
+          '
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.appVersion }}
+          DSH_VERSION: ${{ needs.prepare.outputs.dshVersion }}
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          APP_VERSION: ${{ needs.prepare.outputs.appVersion }}
+          DSH_VERSION: ${{ needs.prepare.outputs.dshVersion }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(
+            dist/DeepSeek-Harness-Linux-*.AppImage
+            dist/DeepSeek-Harness-Linux-*.deb
+            dist/SHA256SUMS
+            dist/RELEASE.json
+            dist/*.blockmap
+            dist/latest-linux*.yml
+          )
+          asset_count=${#assets[@]}
+          if [ "$asset_count" -eq 0 ]; then
+            echo "::error::没有可上传的发布文件"
+            exit 1
+          fi
+          echo "--- release assets ($TAG) ---"
+          printf '%s\n' "${assets[@]}"
+
+          title="DeepSeek Harness (Linux) $APP_VERSION"
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then
+            flags=(--prerelease)
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG 已存在：覆盖上传产物并更新标题/标记"
+            gh release upload "$TAG" "${assets[@]}" --clobber
+            gh release edit "$TAG" --title "$title" "${flags[@]}"
+          else
+            gh release create "$TAG" "${assets[@]}" \
+              --title "$title" \
+              --generate-notes \
+              "${flags[@]}"
+          fi
+
+          echo "--- release ---"
+          gh release view "$TAG" --json url,tagName,isPrerelease,isLatest,assets \
+            --template '# {{.tagName}} (prerelease={{.isPrerelease}}, latest={{.isLatest}}){{println}}{{.url}}{{println}}{{range .assets}}{{.name}} ({{.size}} bytes){{println}}{{end}}'
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "### Release ${{ needs.prepare.outputs.tag }}"
+            echo "- appVersion: ${{ needs.prepare.outputs.appVersion }}"
+            echo "- dshVersion: ${{ needs.prepare.outputs.dshVersion }}"
+            echo "- workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo ""
+            echo "| arch | AppImage | deb |"
+            echo "| --- | --- | --- |"
+            echo "| x86_64 | DeepSeek-Harness-Linux-${{ needs.prepare.outputs.appVersion }}-x86_64.AppImage | DeepSeek-Harness-Linux-${{ needs.prepare.outputs.appVersion }}-amd64.deb |"
+            echo "| arm64 | DeepSeek-Harness-Linux-${{ needs.prepare.outputs.appVersion }}-arm64.AppImage | DeepSeek-Harness-Linux-${{ needs.prepare.outputs.appVersion }}-arm64.deb |"
+          } >> "$GITHUB_STEP_SUMMARY"

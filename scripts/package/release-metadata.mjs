@@ -9,11 +9,15 @@
 //
 // 设计: 每次只构建一个架构，脚本会合并 RELEASE.json 中另一架构的既有条目，
 //       并对 dist/ 中所有交付文件重新计算 SHA-256（可复算）。
+//
+// 自动更新元数据：electron-builder 生成的 latest-linux.yml（x64）/
+// latest-linux-arm64.yml（arm64）以及独立 *.blockmap（若有）也纳入 SHA256SUMS 与
+// RELEASE.json —— 它们必须作为 GitHub Release 资产上传，客户端才能完成自动更新。
 import { createHash } from 'node:crypto';
 import { createReadStream, readdirSync, readFileSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ARTIFACT_RE = /^(DeepSeek-Harness-Linux-.*\.(AppImage|deb)|deepseek-harness-linux-.*\.tar\.gz)$/;
+const ARTIFACT_RE = /^(DeepSeek-Harness-Linux-.*\.(AppImage|deb)|deepseek-harness-linux-.*\.tar\.gz|latest-linux(?:-arm64)?\.yml|.*\.blockmap)$/;
 
 function parseArgs(argv) {
   const defaults = {
@@ -78,12 +82,17 @@ function sha256(file) {
 }
 
 function detectArch(name) {
+  // electron-updater 在 Linux 上的通道文件按架构区分：
+  //   x64   -> latest-linux.yml       arm64 -> latest-linux-arm64.yml
+  if (name === 'latest-linux.yml') return 'x86_64';
   if (/(x86_64|amd64)/.test(name)) return 'x86_64';
   if (/arm64/.test(name)) return 'arm64';
   return 'unknown';
 }
 
 function detectKind(name) {
+  if (/^latest-linux(?:-arm64)?\.yml$/.test(name)) return 'update-metadata';
+  if (name.endsWith('.blockmap')) return 'blockmap';
   if (name.endsWith('.AppImage')) return 'AppImage';
   if (name.endsWith('.deb')) return 'deb';
   if (name.endsWith('.tar.gz')) return 'tar.gz';

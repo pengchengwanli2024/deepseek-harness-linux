@@ -1,0 +1,245 @@
+# DeepSeek Harness (Linux) — 轻量 CI（语法/静态检查、版本一致性、文档链接）
+#
+# 设计原则：
+#   * PR / push 只做便宜检查（< 5 分钟），不做全量构建（构建见 release.yml）。
+#   * 不使用第三方 action，action 版本固定为 v4；不依赖任何 secrets。
+#   * 校验对象：shell（bash -n / shellcheck）、Node（node --check）、workflow YAML、
+#     versions.json 与 package.json 一致性、Markdown 相对链接、更新脚本离线自测。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Shell syntax (bash -n)
+        run: |
+          set -euo pipefail
+          git ls-files -z '*.sh' | xargs -0 -r -n1 bash -n
+          echo "bash -n: OK for $(git ls-files '*.sh' | wc -l) script(s)"
+
+      - name: ShellCheck
+        run: |
+          set -euo pipefail
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq shellcheck
+          fi
+          shellcheck --version
+          # SC2066/SC2318 是 scripts/package/verify-in-container.sh 的历史遗留问题
+          # （由 packaging 任务维护）；修复后请从下面的排除列表移除。
+          git ls-files -z '*.sh' | xargs -0 -r shellcheck -S warning -x -e SC2066,SC2318
+          echo "shellcheck: OK"
+
+      - name: Node syntax (node --check)
+        run: |
+          set -euo pipefail
+          git ls-files -z '*.mjs' '*.cjs' '*.js' | xargs -0 -r -n1 node --check
+          echo "node --check: OK for $(git ls-files '*.mjs' '*.cjs' '*.js' | wc -l) file(s)"
+
+      - name: Workflow YAML parse (Ruby/Psych)
+        run: |
+          set -euo pipefail
+          ruby -ryaml -e '
+            files = Dir.glob(".github/workflows/*.{yml,yaml}").sort
+            raise "no workflow files found" if files.empty?
+            files.each do |file|
+              YAML.load_file(file)
+              puts "YAML OK: " + file
+            end
+          '
+
+      - name: Workflow invariants (pinned actions, no secrets, permissions)
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const dir = '.github/workflows';
+          const files = fs.readdirSync(dir).filter((f) => /\.ya?ml$/.test(f)).sort();
+          const allowedActions = new Set([
+            'actions/checkout',
+            'actions/setup-node',
+            'actions/upload-artifact',
+            'actions/download-artifact',
+          ]);
+          const pinnedVersion = /^v4(?:\.\d+){0,2}$/;
+          let failures = 0;
+          const fail = (msg) => { failures += 1; console.error('FAIL ' + msg); };
+          for (const file of files) {
+            const full = path.join(dir, file);
+            const text = fs.readFileSync(full, 'utf8');
+            if (!/^on:/m.test(text)) fail(file + ': 缺少 on: 触发器');
+            if (!/^jobs:/m.test(text)) fail(file + ': 缺少 jobs:');
+            if (!/^permissions:/m.test(text)) fail(file + ': 缺少顶层 permissions:');
+            if (/secrets\./.test(text)) fail(file + ': 引用了 secrets 变量（workflow 要求无秘密）');
+            const uses = [...text.matchAll(/^\s*-?\s*uses:\s*["']?([A-Za-z0-9_.\/-]+@\S+?)["']?\s*$/gm)].map((m) => m[1]);
+            for (const action of uses) {
+              const at = action.lastIndexOf('@');
+              const name = action.slice(0, at);
+              const version = action.slice(at + 1);
+              if (!allowedActions.has(name) || !pinnedVersion.test(version)) {
+                fail(file + ': 未固定的 action ' + action + '（仅允许 ' + [...allowedActions].join(', ') + ' @v4）');
+              }
+            }
+            if (uses.length === 0) fail(file + ': 没有 uses: 的 action，检查是否被写坏');
+          }
+          const must = {
+            'release.yml': [/contents:\s*write/, /workflow_dispatch/],
+            'upstream-watch.yml': [/contents:\s*write/, /actions:\s*write/],
+            'ci.yml': [/contents:\s*read/],
+          };
+          for (const [file, patterns] of Object.entries(must)) {
+            if (!files.includes(file)) { fail('缺少 workflow: ' + file); continue; }
+            const text = fs.readFileSync(path.join(dir, file), 'utf8');
+            for (const pattern of patterns) {
+              if (!pattern.test(text)) fail(file + ': 缺少必需内容 ' + pattern);
+            }
+          }
+          if (failures > 0) process.exit(1);
+          console.log('workflow invariants: OK (' + files.length + ' workflow(s))');
+          NODE
+
+      - name: Versions consistency (versions.json <-> package.json)
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const fail = (msg) => { console.error('FAIL ' + msg); process.exit(1); };
+          const versions = JSON.parse(fs.readFileSync('versions.json', 'utf8'));
+          const required = ['appVersion', 'dshVersion', 'nodeVersion', 'electronVersion', 'electronBuilderVersion'];
+          for (const key of required) {
+            if (typeof versions[key] !== 'string' || versions[key] === '') fail('versions.json 缺少字段 ' + key);
+          }
+          const exact = /^\d+\.\d+\.\d+$/;
+          for (const key of ['appVersion', 'nodeVersion', 'electronVersion', 'electronBuilderVersion']) {
+            if (!exact.test(versions[key])) fail('versions.json ' + key + ' 不是 X.Y.Z: ' + versions[key]);
+          }
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (pkg.version !== versions.appVersion) {
+            fail('package.json version=' + pkg.version + ' != versions.json appVersion=' + versions.appVersion);
+          }
+          const dev = pkg.devDependencies || {};
+          if (dev.electron !== versions.electronVersion) {
+            fail('package.json electron=' + dev.electron + ' != versions.json electronVersion=' + versions.electronVersion);
+          }
+          if (dev['electron-builder'] !== versions.electronBuilderVersion) {
+            fail('package.json electron-builder=' + dev['electron-builder'] + ' != versions.json electronBuilderVersion=' + versions.electronBuilderVersion);
+          }
+          console.log('versions consistency: OK (app=' + versions.appVersion + ', dsh=' + versions.dshVersion + ')');
+          NODE
+
+      - name: Updater self-test (offline, no network)
+        run: |
+          set -euo pipefail
+          current="$(node -p 'require("./versions.json").dshVersion')"
+
+          out="$(node scripts/update-dsh.mjs --check --dsh-version "$current")"
+          test "$out" = "UP_TO_DATE"
+          echo "updater check (same version): UP_TO_DATE"
+
+          set +e
+          node scripts/update-dsh.mjs --check --dsh-version 99.0.0 > /tmp/updater-new.out 2>/dev/null
+          rc=$?
+          set -e
+          test "$rc" -eq 10
+          grep -qx 'NEW 99.0.0' /tmp/updater-new.out
+          echo "updater check (new version): NEW 99.0.0 (exit 10)"
+
+          # --apply 演练：在临时 fixture 上执行，不触碰仓库工作区。
+          tmp="$(mktemp -d)"
+          mkdir -p "$tmp/docs"
+          printf '%s\n' '{"appVersion":"0.2.1","dshVersion":"0.2.1-rc.5","nodeVersion":"24.22.2","electronVersion":"45.2.1","electronBuilderVersion":"26.18.0"}' > "$tmp/versions.json"
+          printf '%s\n' '{"name":"fixture","version":"0.2.1"}' > "$tmp/package.json"
+          printf '%s\n' 'dsh 0.2.1-rc.5 / app 0.2.1 / node 24.22.2' > "$tmp/README.md"
+          printf '%s\n' '应用 0.2.1，内置 dsh 0.2.1-rc.5。' > "$tmp/docs/INSTALL.md"
+          node scripts/update-dsh.mjs --apply --root "$tmp" --dsh-version 0.2.2-rc.1 --json > /tmp/updater-apply.out
+          cat /tmp/updater-apply.out
+          node -e '
+            const fs = require("fs");
+            const v = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (v.dshVersion !== "0.2.2-rc.1") throw new Error("dshVersion not updated: " + v.dshVersion);
+            if (v.appVersion !== "0.2.2") throw new Error("appVersion not bumped: " + v.appVersion);
+            const pkg = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+            if (pkg.version !== "0.2.2") throw new Error("package.json version not updated: " + pkg.version);
+            const readme = fs.readFileSync(process.argv[3], "utf8");
+            if (!readme.includes("dsh 0.2.2-rc.1 / app 0.2.2 / node 24.22.2")) throw new Error("README not updated: " + readme);
+            const install = fs.readFileSync(process.argv[4], "utf8");
+            if (!install.includes("应用 0.2.2，内置 dsh 0.2.2-rc.1。")) throw new Error("docs not updated: " + install);
+          ' "$tmp/versions.json" "$tmp/package.json" "$tmp/README.md" "$tmp/docs/INSTALL.md"
+          rm -rf "$tmp"
+          echo "updater apply (fixture): OK"
+
+      - name: Documentation links
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const skipDirs = new Set(['.git', 'node_modules', 'dist', 'runtime', 'build', 'docs/assets']);
+          const files = [];
+          const walk = (dir) => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              if (entry.name.startsWith('.') && entry.name !== '.github') continue;
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                if (skipDirs.has(full) || skipDirs.has(entry.name)) continue;
+                walk(full);
+              } else if (entry.isFile() && entry.name.endsWith('.md')) {
+                files.push(full);
+              }
+            }
+          };
+          walk('.');
+          const missing = [];
+          const linkRe = /\]\(([^()\s]+(?:\([^()]*\)[^()\s]*)*)\)/g;
+          for (const file of files) {
+            const text = fs.readFileSync(file, 'utf8');
+            let match;
+            while ((match = linkRe.exec(text)) !== null) {
+              let target = match[1].trim();
+              if (!target || target.startsWith('#')) continue;
+              if (/^(https?:|mailto:|data:|tel:)/i.test(target)) continue;
+              if (target.startsWith('/')) continue;
+              target = target.replace(/[?#].*$/, '');
+              let decoded = target;
+              try { decoded = decodeURIComponent(target); } catch (err) { /* keep raw */ }
+              const resolved = path.resolve(path.dirname(file), decoded);
+              if (!fs.existsSync(resolved)) missing.push(file + ' -> ' + match[1]);
+            }
+          }
+          if (missing.length > 0) {
+            console.error('FAIL 文档中有 ' + missing.length + ' 个失效的相对链接：');
+            for (const item of missing) console.error('  ' + item);
+            process.exit(1);
+          }
+          console.log('documentation links: OK (' + files.length + ' markdown file(s))');
+          NODE
+
+      - name: Scripts smoke (help output)
+        run: |
+          set -euo pipefail
+          bash scripts/build.sh --help > /tmp/build-help.txt
+          grep -q 'Usage:' /tmp/build-help.txt
+          node scripts/update-dsh.mjs --help > /tmp/updater-help.txt
+          grep -q '用法:' /tmp/updater-help.txt
+          echo "scripts smoke: OK"

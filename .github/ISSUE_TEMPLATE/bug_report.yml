@@ -1,0 +1,129 @@
+name: Bug 报告
+description: 报告 DeepSeek Harness (Linux) 桌面版的问题（非官方社区构建）
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！提交前请先阅读：
+        - [常见问题 FAQ](https://github.com/pengchengwanli2024/deepseek-harness-linux/blob/main/docs/FAQ.zh-CN.md)
+        - [安装指南](https://github.com/pengchengwanli2024/deepseek-harness-linux/blob/main/docs/INSTALL.zh-CN.md)
+        - 本项目是**非官方**社区构建，与 DeepSeek 无隶属关系（见 [NOTICE.md](https://github.com/pengchengwanli2024/deepseek-harness-linux/blob/main/NOTICE.md)）。
+
+        请**不要**在 issue 中粘贴 API Key、token、完整会话内容或包含个人信息的路径。
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过已有 issue，未发现相同问题
+          required: true
+        - label: 我已阅读 FAQ，并确认这不是已知问题
+          required: true
+        - label: 我使用的是最新 Release（或已说明为自行构建）
+          required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: 应用版本
+      description: 在“帮助 → 关于”或 `deepseek-harness --version` 中查看
+      placeholder: "0.2.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: 安装方式
+      options:
+        - AppImage
+        - deb（apt / dpkg）
+        - CLI 安装脚本（scripts/install-cli.sh）
+        - 源码运行 / 自行构建
+        - 其他（请在描述中说明）
+    validations:
+      required: true
+
+  - type: input
+    id: distro
+    attributes:
+      label: 发行版与版本
+      placeholder: "Ubuntu 24.04 / Debian 12 / Fedora 41 / …"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: arch
+    attributes:
+      label: CPU 架构
+      options:
+        - x86_64 (amd64)
+        - arm64 (aarch64)
+        - 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: session
+    attributes:
+      label: 显示环境
+      options:
+        - X11
+        - Wayland（XWayland）
+        - Wayland（原生 / ozone-platform=wayland）
+        - 无桌面环境（headless / xvfb / 远程）
+        - 不确定
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 实际发生了什么？是否稳定复现？
+      placeholder: 简要描述问题现象与影响范围
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请按顺序列出最小复现步骤
+      placeholder: |
+        1. 启动应用（命令与参数）
+        2. 选择工作区 …
+        3. 执行 …
+        4. 出现 …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志（已脱敏）
+      description: 粘贴 `~/.config/deepseek-harness/logs/server.log` 的相关片段；请先移除 API Key、token、个人路径与业务内容。
+      render: shell
+      placeholder: |
+        [2026-01-01T00:00:00.000Z] starting: …
+        [2026-01-01T00:00:01.000Z] [stdout] dsh web: http://127.0.0.1:XXXXX/?token=***
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 其他信息
+      description: 截图、`dsh web` 是否可单独启动、是否安装了 bubblewrap / fonts-noto-cjk、是否使用代理等（截图可直接拖入此框）。
+    validations:
+      required: false

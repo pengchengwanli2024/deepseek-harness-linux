@@ -1,0 +1,31 @@
+# EditorConfig: https://editorconfig.org
+# 统一换行/缩进，避免跨平台提交产生噪音 diff。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+# Markdown 行尾双空格是硬换行，保留
+trim_trailing_whitespace = false
+indent_size = 2
+
+[*.{yml,yaml,json,jsonc}]
+indent_size = 2
+
+[*.sh]
+indent_size = 2
+
+[Makefile]
+indent_style = tab
+indent_size = 4
+
+[*.{png,jpg,jpeg,gif,webp,ico,AppImage,deb,tar.gz}]
+# 二进制文件不做文本规范化
+insert_final_newline = false
+trim_trailing_whitespace = false

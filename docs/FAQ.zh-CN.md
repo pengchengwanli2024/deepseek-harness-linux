@@ -403,7 +403,7 @@ DSH_HOME=/tmp/dsh-b dsh-web --port 8082 --no-open
 ```
 
 **问：如何更新？**
-本项目不提供自动更新。下载新版安装包覆盖安装即可，用户数据保留。详见 [INSTALL 第 10 节](INSTALL.zh-CN.md#10-升级与卸载)。
+AppImage 支持应用内自动更新（启动后静默检查，或菜单“帮助 → 检查更新…”；也可用 `--updater-check` 手动检查），更新来自 GitHub Releases。deb 安装版需手动下载新包覆盖安装；用户数据（`~/.config/deepseek-harness/`）会保留。可用 `DSH_LINUX_DISABLE_UPDATER=1` 禁用自动检查。详见 [INSTALL 第 10 节](INSTALL.zh-CN.md#10-升级与卸载) 与 [README §7](../README.md#7-更新机制升级与卸载)。
 
 **问：支持哪些架构？**
 x86_64 与 arm64。用 `uname -m` 确认后下载对应产物。

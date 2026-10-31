@@ -1,0 +1,41 @@
+# Git attributes: https://git-scm.com/docs/gitattributes
+# 统一行尾，保证在 Linux/macOS/Windows 上检出一致；二进制文件不做转换。
+
+* text=auto eol=lf
+
+# 源码与脚本
+*.sh      text eol=lf
+*.bash    text eol=lf
+*.mjs     text eol=lf
+*.cjs     text eol=lf
+*.js      text eol=lf
+*.json    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.md      text eol=lf
+*.desktop text eol=lf
+*.service text eol=lf
+
+# 二进制资源（避免行尾转换与文本 diff）
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.ico     binary
+*.icns    binary
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.AppImage binary
+*.deb     binary
+*.tar.gz  binary
+
+# 构建产物不参与语言统计
+dist/**    linguist-generated=true
+build/**   linguist-generated=true
+runtime/** linguist-generated=true
+package-lock.json linguist-generated=true
+
+# 让 GitHub 在 diff 中折叠大文件
+package-lock.json -diff
