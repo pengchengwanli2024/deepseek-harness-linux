@@ -386,8 +386,9 @@ jobs:
           fi
 
           echo "--- release ---"
-          gh release view "$TAG" --json url,tagName,isPrerelease,isLatest,assets \
-            --template '# {{.tagName}} (prerelease={{.isPrerelease}}, latest={{.isLatest}}){{println}}{{.url}}{{println}}{{range .assets}}{{.name}} ({{.size}} bytes){{println}}{{end}}'
+          # 注意：runner 预装的 gh 版本可能不认识 isLatest 字段，这里只用稳定字段。
+          gh release view "$TAG" --json url,tagName,isPrerelease,assets \
+            --template '# {{.tagName}} (prerelease={{.isPrerelease}}){{println}}{{.url}}{{println}}{{range .assets}}{{.name}} ({{.size}} bytes){{println}}{{end}}'
 
       - name: Job summary
         if: always()

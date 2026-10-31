@@ -53,3 +53,9 @@ updates:
       github-actions:
         patterns:
           - "*"
+    ignore:
+      # workflow 中的 action 固定为 v4 系列（ci.yml 有强制校验）；
+      # 大版本升级需要人工迁移，不自动开 PR。
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
