@@ -99,17 +99,17 @@ platform_pkgs() {
   # node_modules/<name> and node_modules/@scope/<name>
   for dir in "$nm"/* "$nm"/@*/*; do
     [ -d "$dir" ] || continue
-    base=$(basename "$dir"); scope=$(basename "$(dirname "$dir")")
+    base=$(basename "$dir")
     case "$base" in
       sherpa-onnx-*)
-        case "$base" in sherpa-onnx-linux-$ARCH|sherpa-onnx-node) ;; *) [ -d "$dir" ] && rm -rf "$dir" ;; esac ;;
+        case "$base" in sherpa-onnx-linux-"$ARCH"|sherpa-onnx-node) ;; *) [ -d "$dir" ] && rm -rf "$dir" ;; esac ;;
       koffi-*)
         # @koromix/koffi-<platform>-<arch>
-        case "$base" in koffi-linux-$ARCH) ;; *) [ -d "$dir" ] && rm -rf "$dir" ;; esac ;;
-      sharp-*|sharp-libvips-*)
+        case "$base" in koffi-linux-"$ARCH") ;; *) [ -d "$dir" ] && rm -rf "$dir" ;; esac ;;
+      sharp-libvips-*|sharp-*)
         case "$base" in *linux-$ARCH*) ;; *) [ -d "$dir" ] && rm -rf "$dir" ;; esac ;;
       ripgrep-*)
-        case "$base" in ripgrep-linux-$ARCH) ;; *) [ -d "$dir" ] && rm -rf "$dir" ;; esac ;;
+        case "$base" in ripgrep-linux-"$ARCH") ;; *) [ -d "$dir" ] && rm -rf "$dir" ;; esac ;;
       libreoffice-kit-*)
         case "$base" in *linux-$ARCH*|libreoffice-kit-wasm) ;; *) [ -d "$dir" ] && rm -rf "$dir" ;; esac ;;
     esac

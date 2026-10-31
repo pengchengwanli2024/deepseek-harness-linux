@@ -100,7 +100,7 @@ rm -rf "$DSH_HOME_DIR" /tmp/dsh-home-home
 mkdir -p "$DSH_HOME_DIR" /tmp/dsh-home-home
 rm -f "$WEBLOG" "$CJ" "$PAGE"
 (
-  cd /tmp
+  cd /tmp || exit 1
   DSH_HOME="$DSH_HOME_DIR" HOME=/tmp/dsh-home-home \
     setsid "$RT/bin/dsh" web --no-open --host 127.0.0.1 --port 0 > "$WEBLOG" 2>&1 &
   echo $! > /tmp/web.pid
