@@ -100,6 +100,25 @@ check_no_residual() {
   log "no residual dsh processes"
 }
 
+find_squashfs_offset() {
+  local img="$1" off major minor block_size magic
+  while IFS= read -r off; do
+    [ -n "$off" ] || continue
+    # squashfs superblock: 0x73717368 ('hsqs' little-endian) + s_major(u32)==4
+    magic="$(od -An -tx1 -j "$off" -N4 "$img" 2>/dev/null | tr -d ' \n')"
+    [ "$magic" = "68737173" ] || continue
+    # squashfs superblock 布局：s_major/s_minor 是 u16，位于 magic 后 +28/+30（不是 +4！）
+    major="$(od -An -tu2 -j $((off + 28)) -N2 "$img" 2>/dev/null | tr -d ' ')"
+    minor="$(od -An -tu2 -j $((off + 30)) -N2 "$img" 2>/dev/null | tr -d ' ')"
+    [ "$major" = "4" ] && [ "$minor" = "0" ] || continue
+    block_size="$(od -An -tu4 -j $((off + 12)) -N4 "$img" 2>/dev/null | tr -d ' ')"
+    if [ -z "$block_size" ] || [ "$block_size" -lt 4096 ] || [ "$block_size" -gt 1048576 ]; then continue; fi
+    printf '%s\n' "$off"
+    return 0
+  done < <(grep -abo hsqs "$img" | cut -d: -f1)
+  return 1
+}
+
 HAS_DEB=0
 HAS_APPIMAGE=0
 case ",$TARGETS," in *,deb,*) HAS_DEB=1 ;; esac
@@ -145,8 +164,8 @@ if [ "$HAS_APPIMAGE" = "1" ]; then
     log "WARN: AppImage outer runtime 无法在本环境执行（Rosetta 限制）；降级 unsquashfs 内容校验"
     apt-get install -y -qq --no-install-recommends squashfs-tools >>/tmp/apt.log 2>&1 || die "安装 squashfs-tools 失败"
     rm -rf /tmp/appimage-extract/squashfs-root
-    OFFSET="$(grep -abo hsqs /tmp/deepseek-harness.AppImage | head -n 1 | cut -d: -f1)"
-    [ -n "$OFFSET" ] || die "无法定位 AppImage squashfs 魔数"
+    OFFSET="$(find_squashfs_offset /tmp/deepseek-harness.AppImage || true)"
+    [ -n "$OFFSET" ] || die "无法定位 AppImage squashfs superblock（hsqs + s_major=4）"
     unsquashfs -q -o "$OFFSET" -d /tmp/appimage-extract/squashfs-root /tmp/deepseek-harness.AppImage >"$EVIDENCE/$TAG-appimage-unsquashfs.log" 2>&1 || die "unsquashfs 解包失败"
   fi
   [ -x /tmp/appimage-extract/squashfs-root/deepseek-harness ] || die "extract 后缺少可执行文件"

@@ -133,7 +133,7 @@ runtime/linux-x64/            # 或 linux-arm64
 - `packaging/` 放配置模板；`scripts/package/build-linux.sh <arch>`：
   1. 校验 `runtime/linux-<arch>` 与 `app/` 存在；
   2. 安装根 `package.json` 的 electron 依赖（缓存 `build/cache/electron`）；
-  3. `extraResources: [{ from: 'runtime/linux-<arch>', to: 'runtime' }]`（app.asar 仅含壳代码）；
+  3. 用 `packaging/after-pack.cjs` 钩子把 `runtime/linux-<arch>` 完整复制到 `resources/runtime`（app.asar 仅含壳代码；electron-builder 的 extraResources 会跳过根级 node_modules）；
   4. 输出 AppImage、deb、tar.gz 到 `dist/`，文件名见 §1；
   5. deb 的 `postinst` 给 `chrome-sandbox` 设 4755；`Depends` 至少含 libgtk-3-0、libnss3、libgbm1、libasound2、libatspi2.0-0、libxss1、libxtst6、xdg-utils；`Recommends: bubblewrap, fonts-noto-cjk`。
   6. 生成 `dist/SHA256SUMS` 与 `dist/RELEASE.json`（版本、dsh/node/electron 版本、构建时间、commit）。
@@ -141,7 +141,7 @@ runtime/linux-x64/            # 或 linux-arm64
 
 ## 7. 构建流水线（顶层）
 
-`scripts/build.sh [--arch x64|arm64|all] [--skip-runtime] [--skip-app] [--target AppImage,deb,tar.gz]`：
+`scripts/build.sh [--arch x64|arm64|all] [--skip-runtime] [--skip-app] [--targets AppImage,deb]`：
 1. `scripts/runtime/build-runtime.sh`（每 arch 一次）
 2. `npm ci`（根目录，Electron 壳依赖；缓存到 build/cache/npm）
 3. `scripts/package/build-linux.sh`（每 arch 一次）

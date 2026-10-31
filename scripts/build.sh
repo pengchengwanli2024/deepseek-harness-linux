@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # DeepSeek Harness (Linux) — top-level build orchestrator.
-# Usage: scripts/build.sh [--arch x64|arm64|all] [--skip-runtime] [--skip-app] [--targets AppImage,deb,tar.gz]
+# Usage: scripts/build.sh [--arch x64|arm64|all] [--skip-runtime] [--skip-app] [--targets AppImage,deb]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,9 +9,10 @@ cd "$ROOT"
 ARCHES="all"
 SKIP_RUNTIME=0
 SKIP_APP=0
-TARGETS="AppImage,deb,tar.gz"
+TARGETS="AppImage,deb"
 APP_VERSION="${APP_VERSION:-0.2.1}"
 DSH_VERSION="${DSH_VERSION:-0.2.1-rc.5}"
+NODE_VERSION="${NODE_VERSION:-24.22.2}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -42,7 +43,7 @@ echo
 if [ "$SKIP_RUNTIME" -eq 0 ]; then
   for arch in $ARCH_LIST; do
     echo "==> [runtime] linux-$arch"
-    bash scripts/runtime/build-runtime.sh --arch "$arch" --dsh-version "$DSH_VERSION"
+    bash scripts/runtime/build-runtime.sh --arch "$arch" --dsh-version "$DSH_VERSION" --node-version "$NODE_VERSION"
     echo
   done
 else
@@ -64,32 +65,16 @@ fi
 
 for arch in $ARCH_LIST; do
   echo "==> [package] linux-$arch -> $TARGETS"
-  bash scripts/package/build-linux.sh "$arch" --targets "$TARGETS"
+  bash scripts/package/build-linux.sh "$arch" --targets "$TARGETS" --app-version "$APP_VERSION" --dsh-version "$DSH_VERSION" --node-version "$NODE_VERSION"
   echo
 done
 
 echo "==> [manifest] writing dist/SHA256SUMS and dist/RELEASE.json"
-( cd dist && shasum -a 256 * 2>/dev/null | grep -vE 'SHA256SUMS|RELEASE.json' > SHA256SUMS || true )
-node -e '
-const fs = require("fs");
-const path = require("path");
-const dist = path.resolve("dist");
-const version = process.env.APP_VERSION || "0.2.1";
-const dsh = process.env.DSH_VERSION || "0.2.1-rc.5";
-const files = fs.readdirSync(dist).filter((f) => !/^(SHA256SUMS|RELEASE.json)$/.test(f));
-const sizes = Object.fromEntries(files.map((f) => [f, fs.statSync(path.join(dist, f)).size]));
-fs.writeFileSync(path.join(dist, "RELEASE.json"), JSON.stringify({
-  product: "DeepSeek Harness (Linux)",
-  unofficial: true,
-  version,
-  dshVersion: dsh,
-  nodeVersion: process.env.NODE_VERSION || "24.22.2",
-  electronVersion: "45.2.1",
-  builtAt: new Date().toISOString(),
-  files: sizes,
-}, null, 2) + "\n");
-console.log("RELEASE.json files:", files.length);
-'
+COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+if git diff --quiet 2>/dev/null; then DIRTY=false; else DIRTY=true; fi
+node scripts/package/release-metadata.mjs --dist dist --arch x64 --version "$APP_VERSION" \
+  --dsh-version "$DSH_VERSION" --node-version "$NODE_VERSION" --electron-version 45.2.1 \
+  --builder-version 26.18.0 --commit "$COMMIT" --dirty "$DIRTY"
 echo
 echo "==> Done. Artifacts in $ROOT/dist"
 ls -lh dist | sed 's/^/    /'

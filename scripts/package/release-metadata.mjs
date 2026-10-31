@@ -131,7 +131,10 @@ async function main() {
     }
   }
   const keep = (previous?.artifacts ?? []).filter((a) => a.arch !== artifactArch);
-  const merged = [...keep, ...artifacts].sort((a, b) => a.name.localeCompare(b.name));
+  // 去重：同名产物以当前 dist 扫描结果为准，避免跨架构合并时重复累积。
+  const byName = new Map();
+  for (const artifact of [...keep, ...artifacts]) byName.set(artifact.name, artifact);
+  const merged = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 
   const release = {
     product: opts.product,

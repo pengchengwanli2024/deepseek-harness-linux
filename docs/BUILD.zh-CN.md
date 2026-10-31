@@ -33,7 +33,7 @@ scripts/build.sh                     顶层编排（--arch / --skip-* / --target
 
 关键原则：
 
-- **运行时与壳分离**：`app.asar` 只包含 Electron 壳代码，运行时通过 `extraResources` 放进 `resources/runtime`。
+- **运行时与壳分离**：`app.asar` 只包含 Electron 壳代码，运行时通过 `afterPack` 钩子复制进 `resources/runtime`（electron-builder 会跳过根级 `node_modules`，故不能用 `extraResources`）。
 - **纯离线运行时**：运行时内置官方 Node.js 发行版与 dsh 生产依赖，不依赖构建机或用户系统的 Node。
 - **容器内构建**：x64/arm64 均在 Linux 容器内完成，避免跨平台手工拼装。
 - **可重复执行**：每个脚本都能重复运行；共享缓存放 `build/`（已 gitignore）。
@@ -54,7 +54,7 @@ scripts/build.sh                     顶层编排（--arch / --skip-* / --target
 ## 3. 快速开始
 
 ```bash
-# 双架构全量构建（默认 --arch all，产出 AppImage/deb/tar.gz）
+# 双架构全量构建（默认 --arch all，产出 AppImage/deb）
 bash scripts/build.sh
 
 # 只构建当前架构（示例：x64）
@@ -63,7 +63,7 @@ bash scripts/build.sh --arch x64
 # 复用已有 runtime/，只重装壳依赖并打包
 bash scripts/build.sh --skip-runtime
 
-# 只重编运行时，不打包
+# 跳过 Electron 壳依赖安装（直接使用已有 node_modules）
 bash scripts/build.sh --skip-app --targets AppImage
 
 # 指定产物类型
@@ -75,7 +75,7 @@ bash scripts/build.sh --arch arm64 --targets AppImage,deb
 ```bash
 ls -lh dist/
 cat dist/RELEASE.json
-sha256sum -c dist/SHA256SUMS
+(cd dist && sha256sum -c SHA256SUMS)
 ```
 
 ## 4. 顶层脚本参数
@@ -87,16 +87,16 @@ sha256sum -c dist/SHA256SUMS
 | `--arch <a>` | `x64` / `arm64` / `all` | `all` | 目标架构或全部 |
 | `--skip-runtime` | 无 | 关 | 跳过运行时构建（要求 `runtime/linux-<arch>` 已存在） |
 | `--skip-app` | 无 | 关 | 跳过 Electron 壳依赖安装（要求 `node_modules/` 已存在） |
-| `--targets <t>` | 逗号分隔，如 `AppImage,deb,tar.gz` | `AppImage,deb,tar.gz` | 传给打包脚本 |
+| `--targets <t>` | 逗号分隔，如 `AppImage,deb` / 追加 `tar.gz` | `AppImage,deb` | 传给打包脚本（tar.gz 可选） |
 | `-h`, `--help` | 无 | — | 打印用法 |
 
 可用环境变量覆盖：
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `APP_VERSION` | `0.2.1` | 应用版本，写入产物名与 `RELEASE.json` |
-| `DSH_VERSION` | `0.2.1-rc.5` | 内置 dsh 版本 |
-| `NODE_VERSION` | `24.22.2` | 写入 `RELEASE.json` 的 Node 版本（运行时脚本实际使用的版本） |
+| `APP_VERSION` | `0.2.1` | 传给打包脚本（`--app-version`），影响产物名与 `RELEASE.json` |
+| `DSH_VERSION` | `0.2.1-rc.5` | 传给运行时与打包脚本（`--dsh-version`） |
+| `NODE_VERSION` | `24.22.2` | 传给运行时与打包脚本（`--node-version`），写入 `RELEASE.json` |
 
 示例：
 
@@ -232,7 +232,7 @@ bash scripts/package/build-linux.sh x64 --dry-run
 1. 宿主侧校验项目、`runtime/linux-<arch>`、`app/`、`package.json` 版本一致性；
 2. 在容器内（`--platform linux/amd64` 或 `linux/arm64`）执行 `scripts/package/in-container.sh`，
    由 electron-builder 26.18.0 产出 AppImage/deb/tar.gz；
-3. 通过 `extraResources` 把 `runtime/linux-<arch>` 放进应用 `resources/runtime`（`app.asar` 仅含壳）；
+3. 通过 `packaging/after-pack.cjs` 钩子把 `runtime/linux-<arch>` 完整复制到应用 `resources/runtime`（`app.asar` 仅含壳；electron-builder 的 extraResources 会跳过根级 node_modules）；
 4. deb 的 `postinst` 设置 `chrome-sandbox` 4755，提供 `/usr/bin/deepseek-harness` → `/opt/DeepSeek Harness/deepseek-harness` 符号链接，声明运行依赖与 `Recommends: bubblewrap, fonts-noto-cjk`；
 5. 规范化产物命名，生成 `dist/SHA256SUMS` 与 `dist/RELEASE.json`；
 6. 证据写入 `build/package/report-<arch>-<时间戳>.txt` 与 `build/package/build-<arch>-<时间戳>.log`；

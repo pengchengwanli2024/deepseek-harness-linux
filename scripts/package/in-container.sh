@@ -171,6 +171,25 @@ check_asar() {
   assert_runtime_tree "$unpacked/resources/runtime" "unpacked"
 }
 
+find_squashfs_offset() {
+  local img="$1" off major minor block_size magic
+  while IFS= read -r off; do
+    [ -n "$off" ] || continue
+    # squashfs superblock: 0x73717368 ('hsqs' little-endian) + s_major(u32)==4
+    magic="$(od -An -tx1 -j "$off" -N4 "$img" 2>/dev/null | tr -d ' \n')"
+    [ "$magic" = "68737173" ] || continue
+    # squashfs superblock 布局：s_major/s_minor 是 u16，位于 magic 后 +28/+30（不是 +4！）
+    major="$(od -An -tu2 -j $((off + 28)) -N2 "$img" 2>/dev/null | tr -d ' ')"
+    minor="$(od -An -tu2 -j $((off + 30)) -N2 "$img" 2>/dev/null | tr -d ' ')"
+    [ "$major" = "4" ] && [ "$minor" = "0" ] || continue
+    block_size="$(od -An -tu4 -j $((off + 12)) -N4 "$img" 2>/dev/null | tr -d ' ')"
+    if [ -z "$block_size" ] || [ "$block_size" -lt 4096 ] || [ "$block_size" -gt 1048576 ]; then continue; fi
+    printf '%s\n' "$off"
+    return 0
+  done < <(grep -abo hsqs "$img" | cut -d: -f1)
+  return 1
+}
+
 if [ "${#APPIMAGES[@]}" -gt 0 ]; then
   AI="${APPIMAGES[0]}"
   log "AppImage: $(file -b "$AI" | cut -c1-120)"
@@ -188,8 +207,10 @@ if [ "${#APPIMAGES[@]}" -gt 0 ]; then
       DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends squashfs-tools >>/tmp/apt.log 2>&1 || die "安装 squashfs-tools 失败"
     fi
     rm -rf "$EXTRACT_DIR/squashfs-root"
-    AI_OFFSET="$(grep -abo 'hsqs' "$AI" | head -n 1 | cut -d: -f1)"
-    [ -n "$AI_OFFSET" ] || die "无法在 AppImage 中定位 squashfs 魔数 hsqs"
+    # 注意：runtime 字节里也可能出现 "hsqs" 假魔数（x64 runtime 在 194183 处就有），
+    # 必须校验 superblock 的 s_major==4 才认为命中真正的 squashfs（x64 真偏移 = runtime 大小 944632）。
+    AI_OFFSET="$(find_squashfs_offset "$AI" || true)"
+    [ -n "$AI_OFFSET" ] || die "无法在 AppImage 中定位 squashfs superblock（hsqs + s_major=4）"
     log "AppImage squashfs offset: $AI_OFFSET"
     unsquashfs -q -o "$AI_OFFSET" -d "$EXTRACT_DIR/squashfs-root" "$AI" >/tmp/unsquashfs.log 2>&1 || die "unsquashfs 解包失败（见 /tmp/unsquashfs.log）"
     log "AppImage runtime exec skipped under amd64 emulation; structure verified via squashfs offset $AI_OFFSET"

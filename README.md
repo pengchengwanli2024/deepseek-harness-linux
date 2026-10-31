@@ -324,7 +324,7 @@ rm -rf ~/.config/deepseek-harness     # 配置 + DSH_HOME + 日志
 
 ## 8. 命令行参数
 
-桌面应用支持以下参数（`deepseek-harness --help` 查看）：
+桌面应用支持以下参数（完整列表以本节为准；`--help` 输出为摘要）：
 
 | 参数 | 说明 |
 | --- | --- |
@@ -349,10 +349,10 @@ deepseek-harness --screenshot=/tmp/dsh.png
 
 ## 9. 从源码构建
 
-前置：Linux 或 macOS 宿主机、Docker（构建在容器内完成）、Node.js ≥ 22（顶层编排脚本使用）。宿主 npm 缓存异常时可通过 `--cache` 指定临时缓存目录。
+前置：Linux 或 macOS 宿主机、Docker（构建在容器内完成）、Node.js ≥ 22（顶层编排脚本使用）。宿主 npm 缓存异常时可设置 `npm_config_cache` 环境变量指向可写目录。
 
 ```bash
-# 一键构建（默认 x64 + arm64，产出 AppImage/deb/tar.gz）
+# 一键构建（默认 x64 + arm64，产出 AppImage/deb；tar.gz 用 --targets tar.gz 可选）
 bash scripts/build.sh
 
 # 只构建 x64
