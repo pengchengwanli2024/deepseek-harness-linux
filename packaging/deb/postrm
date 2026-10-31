@@ -1,0 +1,15 @@
+#!/bin/sh
+# DeepSeek Harness (Linux) — Debian 包卸载后脚本（postrm）
+#
+# 由 packaging/electron-builder.yml 的 deb.afterRemove 引用。
+set -e
+
+# 删除 postinst 建立的 /usr/bin 入口符号链接
+rm -f /usr/bin/deepseek-harness
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications >/dev/null 2>&1 || true
+fi
+
+# 用户数据（$XDG_CONFIG_HOME/deepseek-harness）不应在卸载时自动删除，保留以便重装复用。
+exit 0

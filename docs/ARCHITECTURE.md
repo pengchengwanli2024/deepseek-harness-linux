@@ -24,8 +24,8 @@
   - `DeepSeek-Harness-Linux-0.2.1-amd64.deb`
   - `DeepSeek-Harness-Linux-0.2.1-arm64.AppImage`
   - `DeepSeek-Harness-Linux-0.2.1-arm64.deb`
-  - `deepseek-harness-linux-0.2.1-x86_64.tar.gz`（免安装便携版，可选）
   - `SHA256SUMS`、`RELEASE.json`
+  - 可选（不随本次发布）：`deepseek-harness-linux-<ver>-<arch>.tar.gz`（可用 `build-linux.sh <arch> --targets tar.gz` 自行构建）
 - 辅助交付：`scripts/install-cli.sh`（无桌面/服务器环境安装 CLI + dsh-web 启动器）。
 
 ## 2. 版本与依赖锁定

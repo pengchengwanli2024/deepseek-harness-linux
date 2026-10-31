@@ -1,0 +1,23 @@
+{
+  "name": "deepseek-harness-linux",
+  "productName": "DeepSeek Harness",
+  "version": "0.2.1",
+  "description": "非官方 DeepSeek Harness Linux 桌面版（Electron 壳 + 内置离线运行时）",
+  "main": "app/main.mjs",
+  "license": "MIT",
+  "private": true,
+  "author": {
+    "name": "DSH Linux contributors"
+  },
+  "homepage": "https://github.com/deepseek-ai/dsh",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "smoke": "electron . --no-sandbox --smoke-test",
+    "dist:linux": "bash scripts/package/build-linux.sh"
+  },
+  "devDependencies": {
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0"
+  }
+}

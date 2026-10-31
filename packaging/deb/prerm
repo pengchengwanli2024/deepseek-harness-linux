@@ -1,0 +1,11 @@
+#!/bin/sh
+# DeepSeek Harness (Linux) — Debian 包卸载前脚本（prerm）
+#
+# 说明：electron-builder 的 deb 目标只支持 afterInstall/afterRemove（postinst/postrm），
+# 本文件作为 deb 维护脚本模板提供，供手工/降级 dpkg-deb 组装时使用；正常流水线
+# 由 fpm 生成的 prerm 负责停止并删除桌面文件，无需自行处理。
+set -e
+
+# 停止用户会话中仍在运行的实例属于用户态行为，安装器不应粗暴 kill；
+# 由应用自身单实例逻辑与桌面环境负责。这里仅做占位与提示。
+exit 0

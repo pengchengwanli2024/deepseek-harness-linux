@@ -1,0 +1,51 @@
+#!/bin/sh
+# DeepSeek Harness (Linux) — Debian 包安装后脚本（postinst）
+#
+# 由 packaging/electron-builder.yml 的 deb.afterInstall 引用，安装/升级时由 dpkg 调用。
+# 主要职责：
+#   1. 给 Electron chrome-sandbox 设置 setuid root + 4755（deb 安装路径可保留 setuid，
+#      AppImage 则不能，壳会在 APPIMAGE 环境下降级 --no-sandbox）。
+#   2. 刷新 desktop/mime 数据库，保证菜单里立刻可见。
+#
+# 注意：不依赖固定安装路径（/opt/<productName> 可能含空格），优先通过 dpkg 数据库定位。
+set -e
+
+PACKAGE_NAME="deepseek-harness-linux"
+
+find_chrome_sandbox() {
+    if command -v dpkg >/dev/null 2>&1; then
+        p="$(dpkg -L "$PACKAGE_NAME" 2>/dev/null | grep '/chrome-sandbox$' | head -n 1 || true)"
+        if [ -n "$p" ] && [ -f "$p" ]; then
+            printf '%s\n' "$p"
+            return 0
+        fi
+    fi
+    for p in /opt/*/chrome-sandbox /opt/*/*/chrome-sandbox /usr/lib/*/chrome-sandbox; do
+        if [ -f "$p" ]; then
+            printf '%s\n' "$p"
+            return 0
+        fi
+    done
+    return 1
+}
+
+SANDBOX="$(find_chrome_sandbox || true)"
+if [ -n "$SANDBOX" ]; then
+    APP_DIR="$(dirname "$SANDBOX")"
+    chown root:root "$SANDBOX" 2>/dev/null || true
+    chmod 4755 "$SANDBOX" || true
+    # electron-builder 的 deb 只把应用装到 /opt/<productName>/，不会生成 /usr/bin 入口，
+    # 这里补齐 /usr/bin/deepseek-harness 符号链接（见架构契约 AC3），并在 postrm 中删除。
+    if [ -x "$APP_DIR/deepseek-harness" ]; then
+        ln -sf "$APP_DIR/deepseek-harness" /usr/bin/deepseek-harness
+    fi
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications >/dev/null 2>&1 || true
+fi
+if command -v update-mime-database >/dev/null 2>&1; then
+    update-mime-database /usr/share/mime >/dev/null 2>&1 || true
+fi
+
+exit 0

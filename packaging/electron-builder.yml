@@ -1,0 +1,92 @@
+# DeepSeek Harness (Linux) — electron-builder 配置（模板）
+#
+# 本文件不直接使用绝对路径，所有外部路径由 scripts/package/in-container.sh
+# 通过 DSH_PKG_* 环境变量注入，因此既可在 Linux 容器内构建，也可在仓库根目录
+# 复现同样的产物布局：
+#
+#   DSH_PKG_OUTPUT            electron-builder 输出目录（容器内为 /build/output）
+#   DSH_PKG_BUILD_RESOURCES   buildResources 目录（仓库 assets/，含 icon.png）
+#   DSH_PKG_ICON              应用图标（仓库 assets/icon.png，1024x1024）
+#   DSH_PKG_RUNTIME           内置运行时目录（runtime/linux-<arch>，放到 resources/runtime）
+#   DSH_PKG_ROOT              仓库根目录（用于引用 packaging/deb/* 模板）
+#
+# 版本/依赖固定：electron 45.2.1、electron-builder 26.18.0（见根 package.json）。
+
+appId: io.github.dshlinux.deepseek-harness
+productName: DeepSeek Harness
+copyright: Copyright (c) 2026 DeepSeek Harness Linux contributors
+
+directories:
+  output: ${env.DSH_PKG_OUTPUT}
+  buildResources: ${env.DSH_PKG_BUILD_RESOURCES}
+
+# app.asar 只包含 Electron 壳（app/），运行时通过 extraResources 外置。
+asar: true
+compression: normal
+npmRebuild: false
+nodeGypRebuild: false
+
+files:
+  - app/**
+  - package.json
+  - "!**/*.map"
+  - "!**/*.md"
+  - "!**/.DS_Store"
+  - "!**/__pycache__/**"
+
+# 运行时通过 afterPack 钩子复制到 resources/runtime（见 packaging/after-pack.cjs）。
+# 不能用 extraResources：electron-builder 的文件过滤器会无条件跳过根级 node_modules，
+# 而 dsh 的生产依赖必须在 resources/runtime/node_modules 中完整随包分发。
+afterPack: ${env.DSH_PKG_ROOT}/packaging/after-pack.cjs
+
+# AppImage 工具集：legacy appimage-12.0.1 的 inner runtime 依赖未版本化 libz.so，
+# 在不装 zlib1g-dev 的发行版上无法启动；1.0.3 为 2025-11 静态 runtime（electron-builder 26.18 支持）。
+toolsets:
+  appimage: "1.0.3"
+
+linux:
+  # 注意：electron-builder 会用 linux.category 覆盖 desktop 文件的 Categories 字段，
+  # 因此这里直接给出完整的 freedesktop 分类列表（契约要求 Development;Utility;）。
+  category: "Development;Utility;"
+  executableName: deepseek-harness
+  icon: ${env.DSH_PKG_ICON}
+  synopsis: DeepSeek Harness (unofficial Linux desktop build)
+  description: Unofficial Linux desktop build of DeepSeek Harness with bundled offline runtime.
+  maintainer: DeepSeek Harness Linux contributors <dsh-linux@users.noreply.github.com>
+  vendor: DeepSeek Harness Linux
+  artifactName: deepseek-harness-${version}-${arch}.${ext}
+  desktop:
+    entry:
+      Name: DeepSeek Harness
+      GenericName: AI Development Environment
+      Comment: DeepSeek Harness (unofficial Linux desktop build)
+      Comment[zh_CN]: DeepSeek Harness（非官方 Linux 桌面版）
+      StartupWMClass: DeepSeek Harness
+      Keywords: deepseek;harness;ai;agent;development;
+      Terminal: "false"
+
+appImage:
+  artifactName: deepseek-harness-${version}-${arch}.${ext}
+
+deb:
+  packageName: deepseek-harness-linux
+  artifactName: deepseek-harness-${version}-${arch}.${ext}
+  packageCategory: utils
+  priority: optional
+  compression: xz
+  # Ubuntu 24.04 起 libgtk-3-0 / libasound2 / libatspi2.0-0 已改名为 *t64 变体，
+  # 而 Debian 12 仍使用旧名，因此用 dpkg 的备选依赖（pkg | pkgt64）同时兼容两者。
+  depends:
+    - libgtk-3-0 | libgtk-3-0t64
+    - libnss3
+    - libgbm1
+    - libasound2 | libasound2t64
+    - libatspi2.0-0 | libatspi2.0-0t64
+    - libxss1
+    - libxtst6
+    - xdg-utils
+  recommends:
+    - bubblewrap
+    - fonts-noto-cjk
+  afterInstall: ${env.DSH_PKG_ROOT}/packaging/deb/postinst
+  afterRemove: ${env.DSH_PKG_ROOT}/packaging/deb/postrm

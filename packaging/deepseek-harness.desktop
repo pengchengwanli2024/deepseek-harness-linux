@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=DeepSeek Harness
+GenericName=AI Development Environment
+GenericName[zh_CN]=AI 开发环境
+Comment=DeepSeek Harness (unofficial Linux desktop build)
+Comment[zh_CN]=DeepSeek Harness（非官方 Linux 桌面版）
+Exec=deepseek-harness %U
+Icon=deepseek-harness
+Terminal=false
+StartupWMClass=DeepSeek Harness
+Categories=Development;Utility;
+Keywords=deepseek;harness;ai;agent;development;
+MimeType=x-scheme-handler/deepseek-harness;
