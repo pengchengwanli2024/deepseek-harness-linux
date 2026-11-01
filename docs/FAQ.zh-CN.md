@@ -405,5 +405,8 @@ DSH_HOME=/tmp/dsh-b dsh-web --port 8082 --no-open
 **问：如何更新？**
 AppImage 支持应用内自动更新（启动后静默检查，或菜单“帮助 → 检查更新…”；也可用 `--updater-check` 手动检查），更新来自 GitHub Releases。deb 安装版需手动下载新包覆盖安装；用户数据（`~/.config/deepseek-harness/`）会保留。可用 `DSH_LINUX_DISABLE_UPDATER=1` 禁用自动检查。详见 [INSTALL 第 10 节](INSTALL.zh-CN.md#10-升级与卸载) 与 [README §7](../README.md#7-更新机制升级与卸载)。
 
+**问：0.2.1 的 deb 安装后一启动就崩溃？**
+0.2.1 的 deb 把应用装在含空格的 `/opt/DeepSeek Harness/`，Electron 的 SUID sandbox helper 在含空格路径下 `execvp` 失败，普通用户启动即崩溃。**升级到 0.2.2+**（安装目录改为 `/opt/DeepSeek-Harness/`）即可修复；临时也可运行 `deepseek-harness --no-sandbox` 启动（会降低 Chromium 沙箱强度）。AppImage 不受此问题影响。
+
 **问：支持哪些架构？**
 x86_64 与 arm64。用 `uname -m` 确认后下载对应产物。
