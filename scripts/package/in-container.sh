@@ -270,7 +270,7 @@ if [ "${#DEBS[@]}" -gt 0 ]; then
   CATEGORIES_LINE="$(grep -E '^Categories=' "$DESKTOP_FILE" | head -n 1 || true)"
   printf '%s' "$CATEGORIES_LINE" | grep -q 'Development' || die "desktop 文件 Categories 缺少 Development（实际: $CATEGORIES_LINE）"
   printf '%s' "$CATEGORIES_LINE" | grep -q 'Utility' || die "desktop 文件 Categories 缺少 Utility（实际: $CATEGORIES_LINE）"
-  grep -q '^StartupWMClass=DeepSeek Harness$' "$DESKTOP_FILE" || die "desktop 文件 StartupWMClass 不符合契约"
+  grep -q '^StartupWMClass=DeepSeek-Harness$' "$DESKTOP_FILE" || die "desktop 文件 StartupWMClass 不符合契约"
   log "deb desktop categories: $CATEGORIES_LINE"
   log "deb desktop entry ok: $(basename "$DESKTOP_FILE")"
   rm -rf "$DEB_ROOT"
