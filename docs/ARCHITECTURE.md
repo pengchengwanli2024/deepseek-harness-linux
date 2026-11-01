@@ -139,7 +139,7 @@ runtime/linux-x64/            # 或 linux-arm64
   4. 输出 AppImage、deb、tar.gz 到 `dist/`，文件名见 §1；
   5. deb 的 `postinst` 给 `chrome-sandbox` 设 4755；`Depends` 至少含 libgtk-3-0、libnss3、libgbm1、libasound2、libatspi2.0-0、libxss1、libxtst6、xdg-utils；`Recommends: bubblewrap, fonts-noto-cjk`。
   6. 生成 `dist/SHA256SUMS` 与 `dist/RELEASE.json`（版本、dsh/node/electron 版本、构建时间、commit）。
-- 应用图标：`assets/icon.png`（1024×1024）；桌面文件 Categories=Development;Utility;，StartupWMClass=DeepSeek Harness。
+- 应用图标：`assets/icon.png`（1024×1024）；桌面文件 Categories=Development;Utility;，StartupWMClass=DeepSeek-Harness。
 
 ## 7. 构建流水线（顶层）
 

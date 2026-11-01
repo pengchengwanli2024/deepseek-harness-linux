@@ -351,7 +351,7 @@ Exec=/home/YOUR_USER/Applications/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
 Icon=/path/to/icon.png
 Terminal=false
 Categories=Development;Utility;
-StartupWMClass=DeepSeek Harness
+StartupWMClass=DeepSeek-Harness
 ```
 
 替换 `YOUR_USER` 与实际路径后：
