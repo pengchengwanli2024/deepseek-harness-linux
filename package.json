@@ -1,7 +1,7 @@
 {
   "name": "deepseek-harness-linux",
-  "productName": "DeepSeek Harness",
-  "version": "0.2.1",
+  "productName": "DeepSeek-Harness",
+  "version": "0.2.2",
   "description": "非官方 DeepSeek Harness Linux 桌面版（Electron 壳 + 内置离线运行时）",
   "main": "app/main.mjs",
   "license": "MIT",

@@ -9,7 +9,7 @@
 
 > **非官方 Linux 桌面版** · 基于官方 npm 包 [`@deepseek-ai/dsh@0.2.1-rc.5`](https://www.npmjs.com/package/@deepseek-ai/dsh) 构建
 >
-> 应用版本 **0.2.1** · 内置 dsh **0.2.1-rc.5** · Node.js **24.22.2** · Electron **45.2.1**
+> 应用版本 **0.2.2** · 内置 dsh **0.2.1-rc.5** · Node.js **24.22.2** · Electron **45.2.1**
 
 **DeepSeek Harness (Linux)** 把 DeepSeek Harness 的 Web UI 封装成一个可直接在 Linux 桌面运行的桌面应用（Electron），提供 **AppImage、.deb** 两种图形化安装方式（x86_64 与 arm64），以及面向服务器/无桌面环境的 **CLI 安装脚本**。应用内置独立的 Node.js 运行时与 dsh 依赖，**不要求系统预装 Node.js**，安装后即可离线启动。
 
@@ -71,10 +71,10 @@
 
 | 文件 | 适用平台 |
 | --- | --- |
-| `DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage` | x86_64 通用（免安装） |
-| `DeepSeek-Harness-Linux-0.2.1-amd64.deb` | Debian/Ubuntu x86_64 |
-| `DeepSeek-Harness-Linux-0.2.1-arm64.AppImage` | arm64 通用（免安装） |
-| `DeepSeek-Harness-Linux-0.2.1-arm64.deb` | Debian/Ubuntu arm64 |
+| `DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage` | x86_64 通用（免安装） |
+| `DeepSeek-Harness-Linux-0.2.2-amd64.deb` | Debian/Ubuntu x86_64 |
+| `DeepSeek-Harness-Linux-0.2.2-arm64.AppImage` | arm64 通用（免安装） |
+| `DeepSeek-Harness-Linux-0.2.2-arm64.deb` | Debian/Ubuntu arm64 |
 | `SHA256SUMS` / `RELEASE.json` | 校验和 / 构建元数据 |
 
 > 发布物为上述 **4 个安装包**。便携 tar.gz **不随发布提供**，如有需要可按 [BUILD 文档](docs/BUILD.zh-CN.md) 自行构建（`scripts/package/build-linux.sh <arch> --targets tar.gz`）。
@@ -90,8 +90,8 @@ sha256sum -c SHA256SUMS --ignore-missing
 ### 方式一：AppImage（免安装，推荐给个人桌面）
 
 ```bash
-chmod +x DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
-./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
+chmod +x DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
 ```
 
 如果提示找不到 FUSE（`libfuse.so.2`）：
@@ -106,13 +106,13 @@ sudo apt install libfuse2t64
 不安装 FUSE 时，推荐使用 AppImage 自带的提取运行模式（非 root 也可，应用会自动处理沙箱降级）：
 
 ```bash
-APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
+APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
 ```
 
 也可以手动解包后再运行（此时需自行加 `--no-sandbox`）：
 
 ```bash
-./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage --appimage-extract
+./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --appimage-extract
 ./squashfs-root/deepseek-harness --no-sandbox
 ```
 
@@ -121,16 +121,16 @@ APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
 ### 方式二：deb（推荐给长期使用/需要系统沙箱）
 
 ```bash
-sudo apt install ./DeepSeek-Harness-Linux-0.2.1-amd64.deb
+sudo apt install ./DeepSeek-Harness-Linux-0.2.2-amd64.deb
 # 若 apt 不支持下述相对路径语法，等价写法：
-# sudo dpkg -i DeepSeek-Harness-Linux-0.2.1-amd64.deb
+# sudo dpkg -i DeepSeek-Harness-Linux-0.2.2-amd64.deb
 # sudo apt-get -f install
 
 deepseek-harness          # 命令行启动
 # 或从应用菜单打开 “DeepSeek Harness”
 ```
 
-包名：`deepseek-harness-linux`；安装后可直接在终端运行 `deepseek-harness`——`/usr/bin/deepseek-harness` 是指向 `/opt/DeepSeek Harness/deepseek-harness` 的符号链接。安装脚本会为 `chrome-sandbox` 设置 4755 权限，因此 Electron 沙箱生效。建议同时安装可选依赖：
+包名：`deepseek-harness-linux`；安装后可直接在终端运行 `deepseek-harness`——`/usr/bin/deepseek-harness` 是指向 `/opt/DeepSeek-Harness/deepseek-harness` 的符号链接。安装脚本会为 `chrome-sandbox` 设置 4755 权限，因此 Electron 沙箱生效。建议同时安装可选依赖：
 
 ```bash
 sudo apt install bubblewrap fonts-noto-cjk
@@ -142,9 +142,9 @@ sudo apt install bubblewrap fonts-noto-cjk
 
 ```bash
 bash scripts/package/build-linux.sh x64 --targets tar.gz
-# 产物：dist/deepseek-harness-linux-0.2.1-x86_64.tar.gz
-tar -xzf dist/deepseek-harness-linux-0.2.1-x86_64.tar.gz
-cd deepseek-harness-0.2.1-x86_64      # 解压出的顶层目录，以实际结果为准
+# 产物：dist/deepseek-harness-linux-0.2.2-x86_64.tar.gz
+tar -xzf dist/deepseek-harness-linux-0.2.2-x86_64.tar.gz
+cd deepseek-harness-0.2.2-x86_64      # 解压出的顶层目录，以实际结果为准
 ./deepseek-harness
 ```
 
@@ -312,7 +312,7 @@ tail -f ~/.config/deepseek-harness/logs/server.log
 
 ```bash
 # deb
-sudo apt install ./DeepSeek-Harness-Linux-0.2.1-amd64.deb
+sudo apt install ./DeepSeek-Harness-Linux-0.2.2-amd64.deb
 
 # AppImage：下载新文件后替换旧文件即可，或等待应用内更新提示按提示重启
 
@@ -411,7 +411,7 @@ bash scripts/build.sh --arch arm64 --targets AppImage,deb
 
 | 组件 | 版本 |
 | --- | --- |
-| 应用版本 | 0.2.1 |
+| 应用版本 | 0.2.2 |
 | @deepseek-ai/dsh | 0.2.1-rc.5 |
 | Node.js | 24.22.2 |
 | Electron | 45.2.1 |

@@ -13,7 +13,7 @@
 # 版本/依赖固定：electron 45.2.1、electron-builder 26.18.0（见根 package.json）。
 
 appId: io.github.dshlinux.deepseek-harness
-productName: DeepSeek Harness
+productName: DeepSeek-Harness
 copyright: Copyright (c) 2026 DeepSeek Harness Linux contributors
 
 # 应用内自动更新（electron-updater 6.8.11）发布源。
@@ -74,7 +74,7 @@ linux:
       GenericName: AI Development Environment
       Comment: DeepSeek Harness (unofficial Linux desktop build)
       Comment[zh_CN]: DeepSeek Harness（非官方 Linux 桌面版）
-      StartupWMClass: DeepSeek Harness
+      StartupWMClass: DeepSeek-Harness
       Keywords: deepseek;harness;ai;agent;development;
       Terminal: "false"
 

@@ -10,9 +10,13 @@
 
 ## [Unreleased]
 
-## [0.2.1] - 2026-10-31
+## [0.2.2] - 2026-11-02
 
 首个公开版本：基于官方 `@deepseek-ai/dsh@0.2.1-rc.5` 的 Linux 桌面封装。
+
+### Fixed
+
+- **deb 普通用户启动崩溃**：安装目录由 `/opt/DeepSeek Harness/` 改为无空格的 `/opt/DeepSeek-Harness/`，修复 Electron SUID sandbox helper 在含空格路径下 `execvp` 失败（普通用户启动即崩溃，AppImage 因使用 `--no-sandbox` 不受影响）。0.2.1 的 deb 可通过 `deepseek-harness --no-sandbox` 临时绕过。
 
 ### Added
 
@@ -39,5 +43,5 @@
 - 应用内自动更新仅支持 AppImage；deb 需手动下载新包。无托盘，关闭窗口即退出应用。
 - 不内置 Python / Office 运行时；需要系统 LibreOffice 的功能按官方行为。
 
-[Unreleased]: https://github.com/pengchengwanli2024/deepseek-harness-linux/compare/v0.2.1...HEAD
-[0.2.1]: https://github.com/pengchengwanli2024/deepseek-harness-linux/releases/tag/v0.2.1
+[Unreleased]: https://github.com/pengchengwanli2024/deepseek-harness-linux/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/pengchengwanli2024/deepseek-harness-linux/releases/tag/v0.2.2

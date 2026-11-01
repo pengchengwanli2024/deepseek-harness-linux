@@ -20,7 +20,7 @@
 
 | 字段 | 含义 | 规则 |
 | --- | --- | --- |
-| `appVersion` | 本项目应用版本（如 `0.2.1`） | 每次发布 patch +1；仅在本项目有独立变更时调整 |
+| `appVersion` | 本项目应用版本（如 `0.2.2`） | 每次发布 patch +1；仅在本项目有独立变更时调整 |
 | `dshVersion` | 内置上游 `@deepseek-ai/dsh` 版本 | 跟随 npm `dist-tags.latest`，由自动巡检/手动升级更新 |
 | `nodeVersion` | 内置 Node.js（官方 linux tar.xz） | 固定大版本，升级需完整回归 |
 | `electronVersion` | Electron 桌面壳 | 固定版本；升级需重跑 shell/打包/验收 |

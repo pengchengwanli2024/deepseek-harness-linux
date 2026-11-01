@@ -9,7 +9,7 @@
 
 > **Unofficial Linux desktop build** of DeepSeek Harness, based on the official npm package [`@deepseek-ai/dsh@0.2.1-rc.5`](https://www.npmjs.com/package/@deepseek-ai/dsh).
 >
-> App version **0.2.1** · bundled dsh **0.2.1-rc.5** · Node.js **24.22.2** · Electron **45.2.1**
+> App version **0.2.2** · bundled dsh **0.2.1-rc.5** · Node.js **24.22.2** · Electron **45.2.1**
 
 This project wraps the DeepSeek Harness web UI into a native Linux desktop application (Electron) and ships it as **AppImage** and **.deb** for x86_64 and arm64. A **CLI installer** is provided for headless servers. The app bundles its own Node.js runtime and dependencies, so system Node.js is not required.
 
@@ -37,16 +37,16 @@ sha256sum -c SHA256SUMS --ignore-missing
 ### AppImage
 
 ```bash
-chmod +x DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
-./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
+chmod +x DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
 ```
 
-If FUSE is missing: `sudo apt install libfuse2` (Debian 12 / Ubuntu 22.04) or `sudo apt install libfuse2t64` (Ubuntu 24.04+). Without FUSE, prefer `APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage`; a manual `--appimage-extract` run needs `--no-sandbox`.
+If FUSE is missing: `sudo apt install libfuse2` (Debian 12 / Ubuntu 22.04) or `sudo apt install libfuse2t64` (Ubuntu 24.04+). Without FUSE, prefer `APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage`; a manual `--appimage-extract` run needs `--no-sandbox`.
 
 ### Debian / Ubuntu package
 
 ```bash
-sudo apt install ./DeepSeek-Harness-Linux-0.2.1-amd64.deb
+sudo apt install ./DeepSeek-Harness-Linux-0.2.2-amd64.deb
 deepseek-harness
 ```
 
@@ -62,8 +62,8 @@ The release ships four packages (AppImage + deb for x86_64 and arm64). A portabl
 
 ```bash
 bash scripts/package/build-linux.sh x64 --targets tar.gz
-tar -xzf dist/deepseek-harness-linux-0.2.1-x86_64.tar.gz
-cd deepseek-harness-0.2.1-x86_64
+tar -xzf dist/deepseek-harness-linux-0.2.2-x86_64.tar.gz
+cd deepseek-harness-0.2.2-x86_64
 ./deepseek-harness
 ```
 

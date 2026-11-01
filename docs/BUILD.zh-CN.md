@@ -2,7 +2,7 @@
 
 > 面向想自行构建本项目发布包的开发者。最终用户安装请见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。
 >
-> 版本基线：应用 0.2.1 · dsh 0.2.1-rc.5 · Node.js 24.22.2 · Electron 45.2.1 · electron-builder 26.18.0。
+> 版本基线：应用 0.2.2 · dsh 0.2.1-rc.5 · Node.js 24.22.2 · Electron 45.2.1 · electron-builder 26.18.0。
 
 ## 目录
 
@@ -94,14 +94,14 @@ cat dist/RELEASE.json
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `APP_VERSION` | `0.2.1` | 传给打包脚本（`--app-version`），影响产物名与 `RELEASE.json` |
+| `APP_VERSION` | `0.2.2` | 传给打包脚本（`--app-version`），影响产物名与 `RELEASE.json` |
 | `DSH_VERSION` | `0.2.1-rc.5` | 传给运行时与打包脚本（`--dsh-version`） |
 | `NODE_VERSION` | `24.22.2` | 传给运行时与打包脚本（`--node-version`），写入 `RELEASE.json` |
 
 示例：
 
 ```bash
-APP_VERSION=0.2.1 DSH_VERSION=0.2.1-rc.5 bash scripts/build.sh --arch x64
+APP_VERSION=0.2.2 DSH_VERSION=0.2.1-rc.5 bash scripts/build.sh --arch x64
 ```
 
 ## 5. 分步构建
@@ -124,7 +124,7 @@ bash scripts/runtime/build-runtime.sh --arch arm64 --no-cache --keep-container
 | `--dsh-version VER` | `0.2.1-rc.5` | `@deepseek-ai/dsh` 的 npm 版本 |
 | `--node-version VER` | `24.22.2` | 内置 Node.js 运行时版本 |
 | `--out DIR` | `runtime/linux-<arch>` | 输出目录（相对仓库根） |
-| `--office-skills-version V` | `0.2.1rc2` | PyPI `deepseek-harness-runtime-bin` wheel 版本（提供 office-skills） |
+| `--office-skills-version V` | `0.2.2rc2` | PyPI `deepseek-harness-runtime-bin` wheel 版本（提供 office-skills） |
 | `--skip-office-skills` | 关 | 不包含 `office-skills/` |
 | `--lean` | 关 | 额外裁剪 libreoffice-kit-wasm 资源（office 导出/渲染将不可用） |
 | `--skip-selftest` | 关 | 跳过容器内自测（不建议用于发布构建） |
@@ -218,7 +218,7 @@ bash scripts/package/build-linux.sh x64 --dry-run
 | `--targets <列表>` | `AppImage,deb,tar.gz` | 逗号分隔的产物类型 |
 | `--runtime <目录>` | `runtime/linux-<arch>` | 内置运行时目录（必须含 `bin/dsh`、`node/bin/node`、dsh 包） |
 | `--out <目录>` | `dist/` | 交付物输出目录 |
-| `--app-version <版本>` | `0.2.1` | 必须与根 `package.json` 的 `version` 一致 |
+| `--app-version <版本>` | `0.2.2` | 必须与根 `package.json` 的 `version` 一致 |
 | `--dsh-version <版本>` | `0.2.1-rc.5` | 写入报告/元数据 |
 | `--node-version <版本>` | `24.22.2` | 写入报告/元数据 |
 | `--image <镜像>` | `node:24-bookworm` | 容器基础镜像 |
@@ -233,7 +233,7 @@ bash scripts/package/build-linux.sh x64 --dry-run
 2. 在容器内（`--platform linux/amd64` 或 `linux/arm64`）执行 `scripts/package/in-container.sh`，
    由 electron-builder 26.18.0 产出 AppImage/deb/tar.gz；
 3. 通过 `packaging/after-pack.cjs` 钩子把 `runtime/linux-<arch>` 完整复制到应用 `resources/runtime`（`app.asar` 仅含壳；electron-builder 的 extraResources 会跳过根级 node_modules）；
-4. deb 的 `postinst` 设置 `chrome-sandbox` 4755，提供 `/usr/bin/deepseek-harness` → `/opt/DeepSeek Harness/deepseek-harness` 符号链接，声明运行依赖与 `Recommends: bubblewrap, fonts-noto-cjk`；
+4. deb 的 `postinst` 设置 `chrome-sandbox` 4755，提供 `/usr/bin/deepseek-harness` → `/opt/DeepSeek-Harness/deepseek-harness` 符号链接，声明运行依赖与 `Recommends: bubblewrap, fonts-noto-cjk`；
 5. 规范化产物命名，生成 `dist/SHA256SUMS` 与 `dist/RELEASE.json`；
 6. 证据写入 `build/package/report-<arch>-<时间戳>.txt` 与 `build/package/build-<arch>-<时间戳>.log`；
 7. 成功时最后一行输出 `PKG_OK arch=<arch> artifacts=<n>`。
@@ -244,10 +244,10 @@ bash scripts/package/build-linux.sh x64 --dry-run
 
 | 文件 | 架构 | 说明 |
 | --- | --- | --- |
-| `DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage` | x64 | 免安装 |
-| `DeepSeek-Harness-Linux-0.2.1-amd64.deb` | x64 | Debian/Ubuntu |
-| `DeepSeek-Harness-Linux-0.2.1-arm64.AppImage` | arm64 | 免安装 |
-| `DeepSeek-Harness-Linux-0.2.1-arm64.deb` | arm64 | Debian/Ubuntu |
+| `DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage` | x64 | 免安装 |
+| `DeepSeek-Harness-Linux-0.2.2-amd64.deb` | x64 | Debian/Ubuntu |
+| `DeepSeek-Harness-Linux-0.2.2-arm64.AppImage` | arm64 | 免安装 |
+| `DeepSeek-Harness-Linux-0.2.2-arm64.deb` | arm64 | Debian/Ubuntu |
 | `SHA256SUMS` | — | 校验和（`sha256sum -c` 可复算） |
 | `RELEASE.json` | — | 版本、内置组件版本、构建时间、各文件大小 |
 
@@ -305,11 +305,11 @@ bash scripts/package/build-linux.sh x64 --dry-run
 
 ```bash
 # 无 FUSE 时推荐提取运行模式（应用自动降级沙箱）
-APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a ./dist/DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage --smoke-test
+APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a ./dist/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --smoke-test
 # 期望输出包含：SMOKE_OK <url>
 
 # 或手动解包（运行时必须加 --no-sandbox）
-./dist/DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage --appimage-extract
+./dist/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --appimage-extract
 xvfb-run -a ./squashfs-root/deepseek-harness --no-sandbox --smoke-test
 
 xvfb-run -a ./squashfs-root/deepseek-harness --no-sandbox --screenshot=/tmp/dsh.png
@@ -339,7 +339,7 @@ docker run --rm -it --platform linux/amd64 \
   -v "$PWD/dist:/dist:ro" ubuntu:24.04 bash
 # 容器内：
 apt-get update
-apt-get install -y /dist/DeepSeek-Harness-Linux-0.2.1-amd64.deb
+apt-get install -y /dist/DeepSeek-Harness-Linux-0.2.2-amd64.deb
 which deepseek-harness
 apt-get install -y xvfb
 xvfb-run -a deepseek-harness --smoke-test

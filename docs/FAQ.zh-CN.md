@@ -1,6 +1,6 @@
 # 常见问题（FAQ · DeepSeek Harness Linux）
 
-> 适用版本：应用 0.2.1，内置 dsh 0.2.1-rc.5。安装步骤见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)，构建问题见 [BUILD.zh-CN.md](BUILD.zh-CN.md)。
+> 适用版本：应用 0.2.2，内置 dsh 0.2.1-rc.5。安装步骤见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)，构建问题见 [BUILD.zh-CN.md](BUILD.zh-CN.md)。
 
 ## 目录
 
@@ -43,13 +43,13 @@ sudo pacman -S fuse2
 不装 FUSE 也能用——**推荐**使用提取运行模式（非 root 也可，应用会自动处理沙箱降级）：
 
 ```bash
-APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
+APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
 ```
 
 或者手动解包后运行（需显式加 `--no-sandbox`）：
 
 ```bash
-./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage --appimage-extract
+./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --appimage-extract
 ./squashfs-root/deepseek-harness --no-sandbox
 ```
 
@@ -66,7 +66,7 @@ APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
 1. 在终端前台运行，观察 stderr：
 
    ```bash
-   ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
+   ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
    ```
 
 2. 查看服务日志：
@@ -84,13 +84,13 @@ APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
 4. 如果是 `The SUID sandbox helper binary was found, but is not configured correctly`，说明 Electron 沙箱不可用。AppImage 会自动加 `--no-sandbox`；若仍失败，手动指定：
 
    ```bash
-   ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage --no-sandbox
+   ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --no-sandbox
    ```
 
 5. 尝试禁用 GPU（虚拟机/远程桌面/老显卡常见）：
 
    ```bash
-   ./DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage --disable-gpu
+   ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --disable-gpu
    # 或使用应用内置开关：
    DSH_LINUX_DISABLE_GPU=1 deepseek-harness
    ```

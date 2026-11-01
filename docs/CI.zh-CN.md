@@ -31,7 +31,7 @@
 
 | 字段 | 含义 | 更新方式 |
 | --- | --- | --- |
-| `appVersion` | 本项目应用版本（如 `0.2.1`） | 每次发布 patch +1（自动巡检会做）；也可手动修改 |
+| `appVersion` | 本项目应用版本（如 `0.2.2`） | 每次发布 patch +1（自动巡检会做）；也可手动修改 |
 | `dshVersion` | 内置上游 `@deepseek-ai/dsh` 版本 | 跟随 npm `dist-tags.latest`，由更新脚本写入 |
 | `nodeVersion` | 内置 Node.js 版本（官方 linux tar.xz） | 手动升级，需要完整回归（见第 9 节） |
 | `electronVersion` | Electron 桌面壳版本 | 手动升级，需与根 `package.json` 的 `devDependencies` 同步 |
@@ -102,7 +102,7 @@ bash scripts/update-dsh.sh --apply --dsh-version 0.2.2-rc.1 --dry-run
 
 1. `versions.json`：`dshVersion` 更新为上游版本，`appVersion` patch +1（可用 `--app-version` 显式指定）。
 2. 根 `package.json`：`version` 同步为新 `appVersion`。
-3. `README.md`、`README.en.md`、`docs/**/*.md`：把旧版本字符串替换为新值（app / dsh / node 三类；先替换更长的 dsh 版本，避免 `0.2.1` 误伤 `0.2.1-rc.5`；`0.2.10`、`10.2.1`、`0.2.1-rc.4` 等相似串不会被误改）。
+3. `README.md`、`README.en.md`、`docs/**/*.md`：把旧版本字符串替换为新值（app / dsh / node 三类；先替换更长的 dsh 版本，避免 `0.2.2` 误伤 `0.2.1-rc.5`；`0.2.20`、`10.2.2`、`0.2.1-rc.4` 等相似串不会被误改）。
 4. 写入后自校验（重新读取文件确认值正确）；失败返回退出码 `2`，不会留下“半更新”状态。
 
 它**不会**：git commit / push、打 tag、改 CHANGELOG、改 `.github/` 或脚本里的版本。这些由巡检流水线或维护者完成。

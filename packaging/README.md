@@ -81,7 +81,7 @@ CI 的 `release.yml` 已覆盖这些资产。
   （x86_64 静态 runtime 返回 `Exec format error`，与产物无关）：流水线会自动降级为
   `hsqs + s_major==4` 定位 squashfs superblock 后用 `unsquashfs` 校验 payload；
   真实 x86_64 机器上的启动冒烟需在发布前复核。
-- **deb 安装入口**：electron-builder 只安装到 `/opt/DeepSeek Harness/`，`postinst`
+- **deb 安装入口**：electron-builder 只安装到 `/opt/DeepSeek-Harness/`，`postinst`
   额外创建 `/usr/bin/deepseek-harness` 符号链接（`postrm` 删除），并给
   `chrome-sandbox` 设 4755。
 - **自动更新的前提**：仅 AppImage 走应用内更新（`process.env.APPIMAGE` 存在）；deb
