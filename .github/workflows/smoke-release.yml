@@ -1,0 +1,78 @@
+# DeepSeek Harness (Linux) — 发布产物冒烟测试（真实 Linux runner）
+#
+# 用途：在原生 x64/arm64 GitHub Runner 上验证已发布资产（AppImage 直接运行、
+# deb 安装后以普通用户启动），覆盖本地容器无法验证的 Electron SUID/命名空间沙箱路径。
+# 触发：手动 workflow_dispatch（发布后运行，或排查用户报告时运行）。
+name: Release smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要验证的 release tag（默认 v0.2.1）"
+        required: false
+        default: "v0.2.1"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+            asset: DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage
+            deb: DeepSeek-Harness-Linux-0.2.1-amd64.deb
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            asset: DeepSeek-Harness-Linux-0.2.1-arm64.AppImage
+            deb: DeepSeek-Harness-Linux-0.2.1-arm64.deb
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - name: Install test tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libfuse2t64 || sudo apt-get install -y -qq xvfb libfuse2
+          which xvfb-run
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag }}"
+          mkdir -p assets && cd assets
+          gh release download "$tag" --repo "${{ github.repository }}" --pattern '*AppImage' --pattern '*.deb' --clobber
+          ls -lh
+
+      - name: AppImage direct run (no extra flags)
+        run: |
+          set -euo pipefail
+          chmod +x "assets/${{ matrix.asset }}"
+          xvfb-run -a -s "-screen 0 1280x800x24" "assets/${{ matrix.asset }}" --smoke-test 2>&1 | tee /tmp/appimage.log | tail -20
+          grep -q SMOKE_OK /tmp/appimage.log
+
+      - name: deb install and normal-user run
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq "./assets/${{ matrix.deb }}"
+          echo "--- sandbox ---"
+          ls -l "/opt/DeepSeek Harness/chrome-sandbox" || true
+          ls -l "/opt/DeepSeek-Harness/chrome-sandbox" || true
+          echo "--- run as $(id -un) ---"
+          xvfb-run -a -s "-screen 0 1280x800x24" deepseek-harness --smoke-test 2>&1 | tee /tmp/deb.log | tail -20
+          grep -q SMOKE_OK /tmp/deb.log
+
+      - name: Show server log on failure
+        if: failure()
+        run: |
+          echo '--- appimage log ---'; tail -50 /tmp/appimage.log 2>/dev/null || true
+          echo '--- deb log ---'; tail -50 /tmp/deb.log 2>/dev/null || true
+          echo '--- user data ---'; find "$HOME/.config/deepseek-harness" -maxdepth 2 -type f 2>/dev/null | head
+          cat "$HOME/.config/deepseek-harness/logs/server.log" 2>/dev/null | tail -50 || true
