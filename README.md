@@ -7,9 +7,9 @@
 
 **仓库**：<https://github.com/pengchengwanli2024/deepseek-harness-linux> · **上游**：<https://github.com/deepseek-ai/deepseek-harness>
 
-> **非官方 Linux 桌面版** · 基于官方 npm 包 [`@deepseek-ai/dsh@0.2.1-rc.5`](https://www.npmjs.com/package/@deepseek-ai/dsh) 构建
+> **非官方 Linux 桌面版** · 基于官方 npm 包 [`@deepseek-ai/dsh@0.2.2-rc.1`](https://www.npmjs.com/package/@deepseek-ai/dsh) 构建
 >
-> 应用版本 **0.2.2** · 内置 dsh **0.2.1-rc.5** · Node.js **24.22.2** · Electron **45.2.1**
+> 应用版本 **0.2.3** · 内置 dsh **0.2.2-rc.1** · Node.js **24.22.2** · Electron **45.2.1**
 
 **DeepSeek Harness (Linux)** 把 DeepSeek Harness 的 Web UI 封装成一个可直接在 Linux 桌面运行的桌面应用（Electron），提供 **AppImage、.deb** 两种图形化安装方式（x86_64 与 arm64），以及面向服务器/无桌面环境的 **CLI 安装脚本**。应用内置独立的 Node.js 运行时与 dsh 依赖，**不要求系统预装 Node.js**，安装后即可离线启动。
 
@@ -44,7 +44,7 @@
 ## 1. 功能特性
 
 - **完整 Harness 体验**：对话、工具调用、会话与工作区管理、计划模式、插件、MCP、定时任务等能力均来自官方 `dsh web`，本项目只负责桌面封装与运行时分发。
-- **开箱即用**：内置 Node.js 24.22.2 与 dsh 0.2.1-rc.5 生产依赖，无需系统 Node、无需联网拉取依赖（模型请求仍需要网络）。
+- **开箱即用**：内置 Node.js 24.22.2 与 dsh 0.2.2-rc.1 生产依赖，无需系统 Node、无需联网拉取依赖（模型请求仍需要网络）。
 - **原生桌面体验**：独立窗口、启动画面、单实例（重复启动聚焦已有窗口）、窗口尺寸/位置记忆（`window-state.json`）、中英文菜单（按系统区域自动选择）、外链使用系统浏览器打开、刷新/缩放/全屏快捷键、关于对话框（显示 Electron/Chromium/Node 与数据目录）。
 - **进程托管**：随窗口启动/退出 dsh 服务；服务异常退出时弹窗提示，可一键重启；退出时终止整个进程组，无残留进程。
 - **本地安全模型**：服务仅监听 `127.0.0.1`，使用一次性 token URL 建立访问；不对外网暴露端口。
@@ -71,10 +71,10 @@
 
 | 文件 | 适用平台 |
 | --- | --- |
-| `DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage` | x86_64 通用（免安装） |
-| `DeepSeek-Harness-Linux-0.2.2-amd64.deb` | Debian/Ubuntu x86_64 |
-| `DeepSeek-Harness-Linux-0.2.2-arm64.AppImage` | arm64 通用（免安装） |
-| `DeepSeek-Harness-Linux-0.2.2-arm64.deb` | Debian/Ubuntu arm64 |
+| `DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage` | x86_64 通用（免安装） |
+| `DeepSeek-Harness-Linux-0.2.3-amd64.deb` | Debian/Ubuntu x86_64 |
+| `DeepSeek-Harness-Linux-0.2.3-arm64.AppImage` | arm64 通用（免安装） |
+| `DeepSeek-Harness-Linux-0.2.3-arm64.deb` | Debian/Ubuntu arm64 |
 | `SHA256SUMS` / `RELEASE.json` | 校验和 / 构建元数据 |
 
 > 发布物为上述 **4 个安装包**。便携 tar.gz **不随发布提供**，如有需要可按 [BUILD 文档](docs/BUILD.zh-CN.md) 自行构建（`scripts/package/build-linux.sh <arch> --targets tar.gz`）。
@@ -90,8 +90,8 @@ sha256sum -c SHA256SUMS --ignore-missing
 ### 方式一：AppImage（免安装，推荐给个人桌面）
 
 ```bash
-chmod +x DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
-./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+chmod +x DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
+./DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
 ```
 
 如果提示找不到 FUSE（`libfuse.so.2`）：
@@ -106,13 +106,13 @@ sudo apt install libfuse2t64
 不安装 FUSE 时，推荐使用 AppImage 自带的提取运行模式（非 root 也可，应用会自动处理沙箱降级）：
 
 ```bash
-APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
 ```
 
 也可以手动解包后再运行（此时需自行加 `--no-sandbox`）：
 
 ```bash
-./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --appimage-extract
+./DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage --appimage-extract
 ./squashfs-root/deepseek-harness --no-sandbox
 ```
 
@@ -121,9 +121,9 @@ APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
 ### 方式二：deb（推荐给长期使用/需要系统沙箱）
 
 ```bash
-sudo apt install ./DeepSeek-Harness-Linux-0.2.2-amd64.deb
+sudo apt install ./DeepSeek-Harness-Linux-0.2.3-amd64.deb
 # 若 apt 不支持下述相对路径语法，等价写法：
-# sudo dpkg -i DeepSeek-Harness-Linux-0.2.2-amd64.deb
+# sudo dpkg -i DeepSeek-Harness-Linux-0.2.3-amd64.deb
 # sudo apt-get -f install
 
 deepseek-harness          # 命令行启动
@@ -142,9 +142,9 @@ sudo apt install bubblewrap fonts-noto-cjk
 
 ```bash
 bash scripts/package/build-linux.sh x64 --targets tar.gz
-# 产物：dist/deepseek-harness-linux-0.2.2-x86_64.tar.gz
-tar -xzf dist/deepseek-harness-linux-0.2.2-x86_64.tar.gz
-cd deepseek-harness-0.2.2-x86_64      # 解压出的顶层目录，以实际结果为准
+# 产物：dist/deepseek-harness-linux-0.2.3-x86_64.tar.gz
+tar -xzf dist/deepseek-harness-linux-0.2.3-x86_64.tar.gz
+cd deepseek-harness-0.2.3-x86_64      # 解压出的顶层目录，以实际结果为准
 ./deepseek-harness
 ```
 
@@ -160,7 +160,7 @@ bash scripts/install-cli.sh
 
 # 可选参数
 bash scripts/install-cli.sh --prefix "$HOME/.local"   # 安装前缀，默认 ~/.local
-bash scripts/install-cli.sh --version 0.2.1-rc.5      # 指定 dsh 版本，默认 0.2.1-rc.5
+bash scripts/install-cli.sh --version 0.2.2-rc.1      # 指定 dsh 版本，默认 0.2.2-rc.1
 bash scripts/install-cli.sh --system-node             # 强制使用系统 Node（需 ≥ 22.19）
 bash scripts/install-cli.sh --uninstall               # 卸载（保留用户数据）
 ```
@@ -168,7 +168,7 @@ bash scripts/install-cli.sh --uninstall               # 卸载（保留用户数
 安装完成后（确保 `~/.local/bin` 在 `PATH` 中）：
 
 ```bash
-dsh-linux --version      # 0.2.1-rc.5，完整 dsh CLI（web/headless/tui/plugin ...）
+dsh-linux --version      # 0.2.2-rc.1，完整 dsh CLI（web/headless/tui/plugin ...）
 dsh-web                  # 启动 Web UI 并自动打开浏览器
 dsh-web --no-open        # 仅启动服务，不打开浏览器（服务器场景）
 ```
@@ -312,13 +312,13 @@ tail -f ~/.config/deepseek-harness/logs/server.log
 
 ```bash
 # deb
-sudo apt install ./DeepSeek-Harness-Linux-0.2.2-amd64.deb
+sudo apt install ./DeepSeek-Harness-Linux-0.2.3-amd64.deb
 
 # AppImage：下载新文件后替换旧文件即可，或等待应用内更新提示按提示重启
 
 # CLI
 bash scripts/install-cli.sh            # 重新执行即升级到默认版本
-bash scripts/install-cli.sh --version 0.2.1-rc.5
+bash scripts/install-cli.sh --version 0.2.2-rc.1
 ```
 
 ### 7.3 卸载
@@ -411,8 +411,8 @@ bash scripts/build.sh --arch arm64 --targets AppImage,deb
 
 | 组件 | 版本 |
 | --- | --- |
-| 应用版本 | 0.2.2 |
-| @deepseek-ai/dsh | 0.2.1-rc.5 |
+| 应用版本 | 0.2.3 |
+| @deepseek-ai/dsh | 0.2.2-rc.1 |
 | Node.js | 24.22.2 |
 | Electron | 45.2.1 |
 | electron-builder | 26.18.0 |

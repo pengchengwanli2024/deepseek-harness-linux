@@ -20,7 +20,7 @@
 
 | 字段 | 含义 | 规则 |
 | --- | --- | --- |
-| `appVersion` | 本项目应用版本（如 `0.2.2`） | 每次发布 patch +1；仅在本项目有独立变更时调整 |
+| `appVersion` | 本项目应用版本（如 `0.2.3`） | 每次发布 patch +1；仅在本项目有独立变更时调整 |
 | `dshVersion` | 内置上游 `@deepseek-ai/dsh` 版本 | 跟随 npm `dist-tags.latest`，由自动巡检/手动升级更新 |
 | `nodeVersion` | 内置 Node.js（官方 linux tar.xz） | 固定大版本，升级需完整回归 |
 | `electronVersion` | Electron 桌面壳 | 固定版本；升级需重跑 shell/打包/验收 |
@@ -103,7 +103,7 @@
 ## 8. 回滚与热修复
 
 - **不要删除或移动已发布的 tag**；GitHub Release 可编辑说明或改为 pre-release。
-- 若某版本存在严重问题：尽快发布新的 patch 版本（例如 `0.2.2`）并在 Release Notes 说明受影响范围，优于静默删除资产。
+- 若某版本存在严重问题：尽快发布新的 patch 版本（例如 `0.2.3`）并在 Release Notes 说明受影响范围，优于静默删除资产。
 - 若 electron-updater 元数据（`latest-linux*.yml`）错误：修复后重新上传，并确认 `sha512`/文件大小与新包一致；必要时临时将该 Release 标记为 pre-release，防止客户端拉到坏包。
 - 若 CI 产物损坏：删除该 Release 的资产并重跑发布流水线，保持 tag 与 RELEASE.json 的 commit 对应。
 

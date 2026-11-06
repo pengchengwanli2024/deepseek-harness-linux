@@ -5,12 +5,12 @@
 
 ## 0. 关键事实（已在本机验证）
 
-- 官方 npm 包：`@deepseek-ai/dsh@0.2.1-rc.5`（latest）。
+- 官方 npm 包：`@deepseek-ai/dsh@0.2.2-rc.1`（latest）。
 - Linux 运行方式：`dsh web --no-open --host 127.0.0.1 --port 0`，启动日志会打印带一次性 token 的地址：
   `dsh web: http://127.0.0.1:<port>/?token=<token>`。
   **窗口必须加载这个带 token 的完整 URL**；不带 token 会 303 重定向。
 - 运行时依赖 Node.js（`^22.19 || >=24`；本项目固定 Node 24.x）。
-- 官方桌面版版本 0.2.1-rc.5；其数据目录通过 `DSH_HOME` 指定。
+- 官方桌面版版本 0.2.2-rc.1；其数据目录通过 `DSH_HOME` 指定。
 - Linux 沙箱：`dsh-bash-sandbox` 使用 bubblewrap（bwrap）。系统未安装 bwrap 时应能降级运行；文档需说明。
 - 官方安装包/更新源只有 mac-arm64 与 win：`https://download.deepseek.com/dsh-desk/feeds/...`，不存在 Linux 桌面包。
 
@@ -18,7 +18,7 @@
 
 - 名称：**DeepSeek Harness (Linux)**（展示名），项目代号 `dsh-linux`。
 - 应用 ID：`io.github.dshlinux.deepseek-harness`；可执行文件：`deepseek-harness`。
-- 版本：`0.2.1`（应用版本），内置 dsh `0.2.1-rc.5`；版本唯一源为仓库根 `versions.json`（appVersion/dshVersion/nodeVersion/electronVersion/electronBuilderVersion），构建号见 `dist/RELEASE.json`。
+- 版本：`0.2.1`（应用版本），内置 dsh `0.2.2-rc.1`；版本唯一源为仓库根 `versions.json`（appVersion/dshVersion/nodeVersion/electronVersion/electronBuilderVersion），构建号见 `dist/RELEASE.json`。
 - 交付物（dist/，同时作为 GitHub Release 资产）：
   - `DeepSeek-Harness-Linux-0.2.1-x86_64.AppImage`
   - `DeepSeek-Harness-Linux-0.2.1-amd64.deb`
@@ -33,7 +33,7 @@
 
 | 组件 | 版本 | 说明 |
 | --- | --- | --- |
-| @deepseek-ai/dsh | 0.2.1-rc.5 | npm 生产安装（--omit=dev） |
+| @deepseek-ai/dsh | 0.2.2-rc.1 | npm 生产安装（--omit=dev） |
 | Node.js | 24.22.2（官方 dist linux tar.xz） | 运行时，含 npm |
 | Electron | 45.2.1 | 桌面壳 |
 | electron-builder | 26.18.0 | 打包 |
@@ -87,12 +87,12 @@ runtime/linux-x64/            # 或 linux-arm64
 ├── node_modules/             # dsh 生产依赖（npm install --omit=dev）
 ├── office-skills/            # 从 PyPI 运行时 wheel 提取的 office SKILL.md（可选但建议）
 ├── licenses/                 # Node LICENSE + dsh LICENSE + 第三方说明
-└── version.json              # {"dsh":"0.2.1-rc.5","node":"24.22.2","arch":"x64","builtAt":"..."}
+└── version.json              # {"dsh":"0.2.2-rc.1","node":"24.22.2","arch":"x64","builtAt":"..."}
 ```
 
 要求：
 - 纯离线可用（不依赖系统 Node/npm）。
-- `bin/dsh --version` 输出 `0.2.1-rc.5`。
+- `bin/dsh --version` 输出 `0.2.2-rc.1`。
 - `DSH_HOME=/tmp/x bin/dsh web --no-open --host 127.0.0.1 --port 0` 10 秒内打印 token URL；`curl -L` 返回 200。
 - 必须剔除无关平台可选依赖（如 node-pty 的 darwin/win prebuild、@koromix/koffi-darwin-*、@img/sharp-darwin-*、sherpa-onnx-darwin-*、libreoffice-kit-darwin-*），保留 linux-<arch> 对应物。
 - 总大小目标：<= 700MB/arch（未压缩；AppImage 目标 <= 450MB）。
@@ -161,7 +161,7 @@ runtime/linux-x64/            # 或 linux-arm64
 
 ## 9. 验收标准（必须全部通过）
 
-- AC1 运行时：x64/arm64 `bin/dsh --version`=0.2.1-rc.5；web 启动打印 token URL；curl -L 200；无插件加载错误。
+- AC1 运行时：x64/arm64 `bin/dsh --version`=0.2.2-rc.1；web 启动打印 token URL；curl -L 200；无插件加载错误。
 - AC2 桌面：在 `ubuntu:24.04` + xvfb 容器中 AppImage（extract 运行）与 deb 均能启动，`--screenshot` 产出非空 PNG；退出后无 dsh 子进程残留。
 - AC3 安装：deb 在干净 ubuntu:24.04 容器中 `dpkg -i` + `apt-get -f install` 成功；`/usr/bin/deepseek-harness` 存在；能启动。
 - AC4 单实例/错误处理：二次启动聚焦已有窗口；服务器被杀后 UI 有错误提示且可重启。

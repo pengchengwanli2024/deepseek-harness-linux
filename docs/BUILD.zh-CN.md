@@ -2,7 +2,7 @@
 
 > 面向想自行构建本项目发布包的开发者。最终用户安装请见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。
 >
-> 版本基线：应用 0.2.2 · dsh 0.2.1-rc.5 · Node.js 24.22.2 · Electron 45.2.1 · electron-builder 26.18.0。
+> 版本基线：应用 0.2.3 · dsh 0.2.2-rc.1 · Node.js 24.22.2 · Electron 45.2.1 · electron-builder 26.18.0。
 
 ## 目录
 
@@ -94,14 +94,14 @@ cat dist/RELEASE.json
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `APP_VERSION` | `0.2.2` | 传给打包脚本（`--app-version`），影响产物名与 `RELEASE.json` |
-| `DSH_VERSION` | `0.2.1-rc.5` | 传给运行时与打包脚本（`--dsh-version`） |
+| `APP_VERSION` | `0.2.3` | 传给打包脚本（`--app-version`），影响产物名与 `RELEASE.json` |
+| `DSH_VERSION` | `0.2.2-rc.1` | 传给运行时与打包脚本（`--dsh-version`） |
 | `NODE_VERSION` | `24.22.2` | 传给运行时与打包脚本（`--node-version`），写入 `RELEASE.json` |
 
 示例：
 
 ```bash
-APP_VERSION=0.2.2 DSH_VERSION=0.2.1-rc.5 bash scripts/build.sh --arch x64
+APP_VERSION=0.2.3 DSH_VERSION=0.2.2-rc.1 bash scripts/build.sh --arch x64
 ```
 
 ## 5. 分步构建
@@ -109,8 +109,8 @@ APP_VERSION=0.2.2 DSH_VERSION=0.2.1-rc.5 bash scripts/build.sh --arch x64
 ### 5.1 组装运行时
 
 ```bash
-bash scripts/runtime/build-runtime.sh --arch x64 --dsh-version 0.2.1-rc.5
-bash scripts/runtime/build-runtime.sh --arch arm64 --dsh-version 0.2.1-rc.5
+bash scripts/runtime/build-runtime.sh --arch x64 --dsh-version 0.2.2-rc.1
+bash scripts/runtime/build-runtime.sh --arch arm64 --dsh-version 0.2.2-rc.1
 
 # 强制重建并保留容器，便于进入容器排查
 bash scripts/runtime/build-runtime.sh --arch arm64 --no-cache --keep-container
@@ -121,10 +121,10 @@ bash scripts/runtime/build-runtime.sh --arch arm64 --no-cache --keep-container
 | 参数 | 默认 | 说明 |
 | --- | --- | --- |
 | `--arch x64\|arm64`（必填） | — | 目标架构 |
-| `--dsh-version VER` | `0.2.1-rc.5` | `@deepseek-ai/dsh` 的 npm 版本 |
+| `--dsh-version VER` | `0.2.2-rc.1` | `@deepseek-ai/dsh` 的 npm 版本 |
 | `--node-version VER` | `24.22.2` | 内置 Node.js 运行时版本 |
 | `--out DIR` | `runtime/linux-<arch>` | 输出目录（相对仓库根） |
-| `--office-skills-version V` | `0.2.2rc2` | PyPI `deepseek-harness-runtime-bin` wheel 版本（提供 office-skills） |
+| `--office-skills-version V` | `0.2.3rc2` | PyPI `deepseek-harness-runtime-bin` wheel 版本（提供 office-skills） |
 | `--skip-office-skills` | 关 | 不包含 `office-skills/` |
 | `--lean` | 关 | 额外裁剪 libreoffice-kit-wasm 资源（office 导出/渲染将不可用） |
 | `--skip-selftest` | 关 | 跳过容器内自测（不建议用于发布构建） |
@@ -150,13 +150,13 @@ runtime/linux-x64/
 ├── node_modules/             # dsh 生产依赖（npm install --omit=dev）
 ├── office-skills/            # 可选：office 技能
 ├── licenses/                 # 第三方许可证汇总
-└── version.json              # {"dsh":"0.2.1-rc.5","node":"24.22.2","arch":"x64","builtAt":"..."}
+└── version.json              # {"dsh":"0.2.2-rc.1","node":"24.22.2","arch":"x64","builtAt":"..."}
 ```
 
 单独验证运行时：
 
 ```bash
-runtime/linux-x64/bin/dsh --version          # 期望：0.2.1-rc.5
+runtime/linux-x64/bin/dsh --version          # 期望：0.2.2-rc.1
 
 DSH_HOME=/tmp/dshhome runtime/linux-x64/bin/dsh web --no-open --host 127.0.0.1 --port 0
 # 日志中应出现：
@@ -167,7 +167,7 @@ DSH_HOME=/tmp/dshhome runtime/linux-x64/bin/dsh web --no-open --host 127.0.0.1 -
 
 验证要点（验收标准 AC1）：
 
-- `bin/dsh --version` 输出 `0.2.1-rc.5`；
+- `bin/dsh --version` 输出 `0.2.2-rc.1`；
 - `dsh web` 10 秒内打印带 token 的 URL；
 - `curl -L` 返回 `200`；
 - 启动日志无 `failed to import` / `ERR_MODULE_NOT_FOUND`；
@@ -218,8 +218,8 @@ bash scripts/package/build-linux.sh x64 --dry-run
 | `--targets <列表>` | `AppImage,deb,tar.gz` | 逗号分隔的产物类型 |
 | `--runtime <目录>` | `runtime/linux-<arch>` | 内置运行时目录（必须含 `bin/dsh`、`node/bin/node`、dsh 包） |
 | `--out <目录>` | `dist/` | 交付物输出目录 |
-| `--app-version <版本>` | `0.2.2` | 必须与根 `package.json` 的 `version` 一致 |
-| `--dsh-version <版本>` | `0.2.1-rc.5` | 写入报告/元数据 |
+| `--app-version <版本>` | `0.2.3` | 必须与根 `package.json` 的 `version` 一致 |
+| `--dsh-version <版本>` | `0.2.2-rc.1` | 写入报告/元数据 |
 | `--node-version <版本>` | `24.22.2` | 写入报告/元数据 |
 | `--image <镜像>` | `node:24-bookworm` | 容器基础镜像 |
 | `--project-dir <目录>` | 仓库根 | 替代项目目录（仅流水线自测） |
@@ -244,10 +244,10 @@ bash scripts/package/build-linux.sh x64 --dry-run
 
 | 文件 | 架构 | 说明 |
 | --- | --- | --- |
-| `DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage` | x64 | 免安装 |
-| `DeepSeek-Harness-Linux-0.2.2-amd64.deb` | x64 | Debian/Ubuntu |
-| `DeepSeek-Harness-Linux-0.2.2-arm64.AppImage` | arm64 | 免安装 |
-| `DeepSeek-Harness-Linux-0.2.2-arm64.deb` | arm64 | Debian/Ubuntu |
+| `DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage` | x64 | 免安装 |
+| `DeepSeek-Harness-Linux-0.2.3-amd64.deb` | x64 | Debian/Ubuntu |
+| `DeepSeek-Harness-Linux-0.2.3-arm64.AppImage` | arm64 | 免安装 |
+| `DeepSeek-Harness-Linux-0.2.3-arm64.deb` | arm64 | Debian/Ubuntu |
 | `SHA256SUMS` | — | 校验和（`sha256sum -c` 可复算） |
 | `RELEASE.json` | — | 版本、内置组件版本、构建时间、各文件大小 |
 
@@ -305,11 +305,11 @@ bash scripts/package/build-linux.sh x64 --dry-run
 
 ```bash
 # 无 FUSE 时推荐提取运行模式（应用自动降级沙箱）
-APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a ./dist/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --smoke-test
+APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a ./dist/DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage --smoke-test
 # 期望输出包含：SMOKE_OK <url>
 
 # 或手动解包（运行时必须加 --no-sandbox）
-./dist/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --appimage-extract
+./dist/DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage --appimage-extract
 xvfb-run -a ./squashfs-root/deepseek-harness --no-sandbox --smoke-test
 
 xvfb-run -a ./squashfs-root/deepseek-harness --no-sandbox --screenshot=/tmp/dsh.png
@@ -339,7 +339,7 @@ docker run --rm -it --platform linux/amd64 \
   -v "$PWD/dist:/dist:ro" ubuntu:24.04 bash
 # 容器内：
 apt-get update
-apt-get install -y /dist/DeepSeek-Harness-Linux-0.2.2-amd64.deb
+apt-get install -y /dist/DeepSeek-Harness-Linux-0.2.3-amd64.deb
 which deepseek-harness
 apt-get install -y xvfb
 xvfb-run -a deepseek-harness --smoke-test
@@ -347,7 +347,7 @@ xvfb-run -a deepseek-harness --smoke-test
 
 ### 8.3 验收检查（对应架构文档 AC）
 
-- [ ] 运行时：两个架构的 `bin/dsh --version` = `0.2.1-rc.5`，web 启动打印 token URL，`curl -L` 200
+- [ ] 运行时：两个架构的 `bin/dsh --version` = `0.2.2-rc.1`，web 启动打印 token URL，`curl -L` 200
 - [ ] 桌面：AppImage 与 deb 均可启动，`--smoke-test` 输出 `SMOKE_OK`，`--screenshot` 产出非空 PNG
 - [ ] 安装：干净 `ubuntu:24.04` 中 `dpkg -i` + `apt-get -f install` 成功，`/usr/bin/deepseek-harness` 存在
 - [ ] 单实例：二次启动聚焦已有窗口
@@ -381,7 +381,7 @@ xvfb-run -a deepseek-harness --smoke-test
 
 - [ ] `bash scripts/build.sh` 在干净环境可复现
 - [ ] `dist/` 内包含 4 个安装包（AppImage×2、deb×2）+ `SHA256SUMS` + `RELEASE.json`（tar.gz 为可选项）
-- [ ] `RELEASE.json` 中 `dshVersion=0.2.1-rc.5`、`nodeVersion=24.22.2`、`electronVersion=45.2.1`
+- [ ] `RELEASE.json` 中 `dshVersion=0.2.2-rc.1`、`nodeVersion=24.22.2`、`electronVersion=45.2.1`
 - [ ] `docs/assets/screenshot.png` 为真实运行截图（非伪造）
 - [ ] README/INSTALL/BUILD/FAQ 中的命令与脚本实际参数一致
 - [ ] `NOTICE.md` 非官方声明完整

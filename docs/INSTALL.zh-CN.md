@@ -1,6 +1,6 @@
 # 安装指南（DeepSeek Harness Linux · 中文）
 
-> 适用范围：应用版本 0.2.2，内置 dsh 0.2.1-rc.5，Node.js 24.22.2。
+> 适用范围：应用版本 0.2.3，内置 dsh 0.2.2-rc.1，Node.js 24.22.2。
 > 如果你只想快速装好，请先看 [README 的「安装」一节](../README.md#3-安装)；本文是完整的安装、配置、卸载与排错说明。
 
 ## 目录
@@ -71,8 +71,8 @@ cat RELEASE.json
 ### 3.1 运行
 
 ```bash
-chmod +x DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
-./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+chmod +x DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
+./DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
 ```
 
 ### 3.2 如果提示 FUSE 错误
@@ -93,13 +93,13 @@ sudo pacman -S fuse2
 不想安装 FUSE 时，**推荐**使用 AppImage 的提取运行模式（非 root 也可，应用会自动处理沙箱降级）：
 
 ```bash
-APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
 ```
 
 也可以手动解包后运行，但需要显式加 `--no-sandbox`：
 
 ```bash
-./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage --appimage-extract
+./DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage --appimage-extract
 ./squashfs-root/deepseek-harness --no-sandbox
 ```
 
@@ -111,8 +111,8 @@ APPIMAGE_EXTRACT_AND_RUN=1 ./DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
 
 ```bash
 mkdir -p ~/Applications
-mv DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage ~/Applications/
-chmod +x ~/Applications/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+mv DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage ~/Applications/
+chmod +x ~/Applications/DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
 ```
 
 然后按 [第 8 节](#8-桌面集成) 创建 `.desktop` 快捷方式。
@@ -122,13 +122,13 @@ chmod +x ~/Applications/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
 ### 4.1 安装
 
 ```bash
-sudo apt install ./DeepSeek-Harness-Linux-0.2.2-amd64.deb
+sudo apt install ./DeepSeek-Harness-Linux-0.2.3-amd64.deb
 ```
 
 若当前 `apt` 不支持下述路径形式，使用 dpkg + 修复依赖：
 
 ```bash
-sudo dpkg -i DeepSeek-Harness-Linux-0.2.2-amd64.deb
+sudo dpkg -i DeepSeek-Harness-Linux-0.2.3-amd64.deb
 sudo apt-get -f install
 ```
 
@@ -170,10 +170,10 @@ deepseek-harness
 
 ```bash
 bash scripts/package/build-linux.sh x64 --targets tar.gz
-# 产物：dist/deepseek-harness-linux-0.2.2-x86_64.tar.gz
+# 产物：dist/deepseek-harness-linux-0.2.3-x86_64.tar.gz
 
-tar -xzf dist/deepseek-harness-linux-0.2.2-x86_64.tar.gz
-cd deepseek-harness-0.2.2-x86_64      # 解压出的顶层目录，以实际结果为准
+tar -xzf dist/deepseek-harness-linux-0.2.3-x86_64.tar.gz
+cd deepseek-harness-0.2.3-x86_64      # 解压出的顶层目录，以实际结果为准
 ./deepseek-harness
 ```
 
@@ -195,7 +195,7 @@ bash scripts/install-cli.sh
 默认行为：
 
 1. 检测系统 Node.js：满足 `≥ 24` 或 `22.19+` 则直接使用，否则下载 Node.js 24.22.2；
-2. 在 `$PREFIX/lib/deepseek-harness` 安装 `@deepseek-ai/dsh@0.2.1-rc.5`（生产依赖）；
+2. 在 `$PREFIX/lib/deepseek-harness` 安装 `@deepseek-ai/dsh@0.2.2-rc.1`（生产依赖）；
 3. 在 `$PREFIX/bin` 生成 `dsh-linux` 与 `dsh-web`；
 4. 写入 `dsh-web.desktop` 桌面入口。
 
@@ -206,7 +206,7 @@ bash scripts/install-cli.sh
 | 参数 | 说明 |
 | --- | --- |
 | `--prefix DIR` | 安装前缀，默认 `$HOME/.local` |
-| `--version VER` | dsh 版本，默认 `0.2.1-rc.5` |
+| `--version VER` | dsh 版本，默认 `0.2.2-rc.1` |
 | `--system-node` | 强制使用系统 Node（必须 `≥ 22.19`） |
 | `--uninstall` | 卸载程序（保留用户数据） |
 
@@ -217,7 +217,7 @@ bash scripts/install-cli.sh
 bash scripts/install-cli.sh --prefix "$HOME/.local/dsh"
 # 系统级前缀需要 root（桌面文件仍写入调用用户的 XDG 目录，一般不推荐）
 sudo bash scripts/install-cli.sh --prefix /opt/deepseek-harness
-bash scripts/install-cli.sh --version 0.2.1-rc.5
+bash scripts/install-cli.sh --version 0.2.2-rc.1
 bash scripts/install-cli.sh --system-node
 ```
 
@@ -226,7 +226,7 @@ bash scripts/install-cli.sh --system-node
 确保 `$PREFIX/bin` 在 `PATH` 中（`~/.local/bin` 通常已被发行版加入）：
 
 ```bash
-dsh-linux --version        # 输出 0.2.1-rc.5
+dsh-linux --version        # 输出 0.2.2-rc.1
 dsh-linux web --help       # 完整 dsh CLI
 dsh-web                    # 启动 Web UI 并打开浏览器
 dsh-web --no-open          # 服务器场景：不打开浏览器
@@ -347,7 +347,7 @@ AppImage 用户（或自建 tar.gz 用户）可手动创建 `~/.local/share/appl
 Type=Application
 Name=DeepSeek Harness
 Comment=DeepSeek Harness desktop (unofficial Linux build)
-Exec=/home/YOUR_USER/Applications/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+Exec=/home/YOUR_USER/Applications/DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
 Icon=/path/to/icon.png
 Terminal=false
 Categories=Development;Utility;
@@ -399,7 +399,7 @@ sudo apt remove deepseek-harness-linux
 sudo apt purge deepseek-harness-linux
 
 # AppImage：删除可执行文件；自建 tar.gz：删除解压目录
-rm -f ~/Applications/DeepSeek-Harness-Linux-0.2.2-x86_64.AppImage
+rm -f ~/Applications/DeepSeek-Harness-Linux-0.2.3-x86_64.AppImage
 rm -rf ~/Applications/squashfs-root
 
 # CLI
